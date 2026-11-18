@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Opt-Out / Suppression Request | Email Intelligence Platform{% endblock %}
+
+{% block public_content %}
+<div style="max-width: 600px; margin: 3rem auto;">
+  <div class="card" style="padding: 2.5rem;">
+    <h2 style="font-size: 1.6rem; margin-bottom: 0.5rem;">Do Not Disclose / Opt-Out</h2>
+    <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 1.75rem; line-height: 1.6;">
+      If you would like your email address or entire company domain excluded from all public discovery and verification results, please submit your request below.
+    </p>
+
+    <form method="post" action="{% url 'opt_out' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="target">Email Address or Domain to Suppress</label>
+        <input type="text" id="target" name="target" class="form-input" required placeholder="jane@example.com or example.com">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reason">Reason / Additional Notes (Optional)</label>
+        <textarea id="reason" name="reason" class="form-input" rows="3" placeholder="e.g. Privacy opt-out request by owner"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Suppression Request</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+

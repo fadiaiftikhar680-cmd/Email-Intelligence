@@ -1,0 +1,441 @@
+openapi: 3.0.3
+info:
+  title: Email Intelligence Platform Public API
+  version: 1.0.0
+  description: Find. Verify. Enrich. Public API for email discovery and deliverability
+    verification.
+paths:
+  /api/v1/account:
+    get:
+      operationId: v1_account_retrieve
+      summary: Get account profile summary
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummaryResponse'
+          description: ''
+  /api/v1/email/verify:
+    post:
+      operationId: v1_email_verify_create
+      description: Synchronous deliverability signals check. Returns Deliverable,
+        Undeliverable, Risky, or Unknown.
+      summary: Verify single email address
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SingleVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SingleVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SingleVerifyRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleVerifyResponse'
+          description: ''
+  /api/v1/email/verify/bulk:
+    post:
+      operationId: v1_email_verify_bulk_create
+      description: Asynchronous bulk verification. Accepts list of emails or CSV/XLSX
+        file upload.
+      summary: Create bulk verification job
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkVerifyRequest'
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkVerifyResponse'
+          description: ''
+  /api/v1/finder/company:
+    post:
+      operationId: v1_finder_company_create
+      summary: Start company email finder job
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyFinderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CompanyFinderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CompanyFinderRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericStatusResponse'
+          description: ''
+  /api/v1/finder/jobs/{job_id}:
+    get:
+      operationId: v1_finder_jobs_retrieve
+      summary: Get status of a job
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+          description: ''
+  /api/v1/finder/person:
+    post:
+      operationId: v1_finder_person_create
+      summary: Start person finder job
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonFinderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonFinderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonFinderRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericStatusResponse'
+          description: ''
+  /api/v1/jobs/{job_id}:
+    get:
+      operationId: v1_jobs_retrieve
+      summary: Get status of a job
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+          description: ''
+  /api/v1/jobs/{job_id}/cancel:
+    post:
+      operationId: v1_jobs_cancel_create
+      summary: Cancel an active job
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericStatusResponse'
+          description: ''
+  /api/v1/jobs/{job_id}/results:
+    get:
+      operationId: v1_jobs_results_retrieve
+      summary: Get paginated results of a job
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResultsResponse'
+          description: ''
+  /api/v1/usage:
+    get:
+      operationId: v1_usage_retrieve
+      summary: Get account usage metrics
+      tags:
+      - v1
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+          description: ''
+components:
+  schemas:
+    AccountSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        retention_days:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - email
+      - id
+      - retention_days
+      - role
+    BulkVerifyRequest:
+      type: object
+      properties:
+        emails:
+          type: array
+          items:
+            type: string
+        file:
+          type: string
+          format: uri
+          nullable: true
+        email_column:
+          type: string
+    BulkVerifyResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        total_rows:
+          type: integer
+      required:
+      - job_id
+      - status
+      - total_rows
+    CompanyFinderRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Target website URL e.g. https://example.com
+        verify:
+          type: boolean
+          default: true
+          description: Automatically verify discovered emails
+      required:
+      - url
+    GenericStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    JobResultsResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - job_id
+      - results
+    JobStatusResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        status:
+          type: string
+        progress_counts:
+          type: object
+          additionalProperties: {}
+        result_count:
+          type: integer
+        error_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - created_at
+      - error_code
+      - finished_at
+      - job_id
+      - kind
+      - result_count
+      - status
+    MethodEnum:
+      enum:
+      - name_company
+      - profile_url
+      type: string
+      description: |-
+        * `name_company` - name_company
+        * `profile_url` - profile_url
+    PersonFinderRequest:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        full_name:
+          type: string
+        company_name:
+          type: string
+        company_domain:
+          type: string
+        profile_url:
+          type: string
+        verify:
+          type: boolean
+          default: true
+      required:
+      - method
+    SingleVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email address to verify
+      required:
+      - email
+    SingleVerifyResponse:
+      type: object
+      properties:
+        email:
+          type: string
+        status:
+          type: string
+          description: deliverable | undeliverable | risky | unknown
+        reason_codes:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: object
+          additionalProperties: {}
+        is_role_based:
+          type: boolean
+        is_disposable:
+          type: boolean
+        verified_at:
+          type: string
+          format: date-time
+      required:
+      - email
+      - evidence
+      - is_disposable
+      - is_role_based
+      - reason_codes
+      - status
+      - verified_at
+    UsageResponse:
+      type: object
+      properties:
+        owner_email:
+          type: string
+        total_verifications:
+          type: integer
+        total_finder_runs:
+          type: integer
+        recent_usage:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - owner_email
+      - recent_usage
+      - total_finder_runs
+      - total_verifications
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Format: ''Api-Key <key>'''

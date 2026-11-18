@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email | Email Intelligence Platform{% endblock %}
+
+{% block public_content %}
+<div style="max-width: 480px; margin: 4rem auto; text-align: center;">
+  <div class="card" style="padding: 3rem 2rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📬</div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 0.75rem;">Check Your Inbox</h2>
+    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem;">
+      We have sent an email verification link to your email address. Please click the link inside to activate full access to the verification engine and public APIs.
+    </p>
+    <a href="{% url 'login' %}" class="btn btn-secondary">Return to Sign In</a>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Terms of Service | Email Intelligence Platform{% endblock %}
+
+{% block public_content %}
+<div style="max-width: 800px; margin: 3rem auto; line-height: 1.7;">
+  <h1 style="font-size: 2rem; margin-bottom: 1rem;">Terms of Service</h1>
+  <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Last Updated: October 30, 2026</p>
+
+  <div class="card" style="padding: 2.5rem;">
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">1. Permitted Public Discovery</h3>
+    <p style="color: #475569; margin-bottom: 1.5rem;">
+      The Email Intelligence Platform indexes publicly disclosed professional and business email addresses. Users agree only to search for publicly accessible professional contacts and not to attempt harvesting private personal addresses or circumventing access barriers.
+    </p>
+
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">2. Technical Verification Reality</h3>
+    <p style="color: #475569; margin-bottom: 1.5rem;">
+      Verification statuses (Deliverable, Undeliverable, Risky, Unknown) represent technical deliverability evidence gathered at the moment of inspection. The platform makes no delivery guarantee and disclaims all liability for email bouncebacks, server rejections, or spam filtering.
+    </p>
+
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">3. Fair Use & Rate Limits</h3>
+    <p style="color: #475569; margin-bottom: 1.5rem;">
+      Users must respect platform rate limits and acceptable use policies. Excessive requests, automated abuse, or probing known do-not-probe domains will result in key revocation or account suspension.
+    </p>
+  </div>
+</div>
+{% endblock %}
+

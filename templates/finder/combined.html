@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Combined Finder & Verifier Pipeline{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <!-- Pipeline Stepper Graphic -->
+  <div class="card" style="padding: 1.75rem 2rem; background: linear-gradient(135deg, #1e293b, #0f172a); color: white;">
+    <h3 style="color: white; margin-bottom: 0.5rem;">Automated 4-Stage Intelligence Pipeline</h3>
+    <p style="color: #94a3b8; font-size: 0.92rem; margin-bottom: 2rem;">
+      Full orchestration from public website crawl to deterministic delivery classification.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
+      <div style="background: rgba(255,255,255,0.06); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #60a5fa;">01</div>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Discovery</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">Bounded Crawl</div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.06); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #a78bfa;">02</div>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Pattern Analysis</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">Candidate Inference</div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.06); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #34d399;">03</div>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Verification</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">13 Technical Rules</div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.06); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #38bdf8;">04</div>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Classification</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">Source Evidence</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Launch Form -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.25rem;">Launch Combined Execution</h3>
+    </div>
+
+    <form method="post" action="{% url 'combined_finder' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="url">Target Company Website</label>
+        <div style="display: flex; gap: 0.75rem;">
+          <input type="text" id="url" name="url" class="form-input" required placeholder="https://company.com">
+          <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Execute Pipeline</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+

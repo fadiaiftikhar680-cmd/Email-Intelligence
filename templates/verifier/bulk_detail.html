@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Bulk Verification: {{ job.filename }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px;">
+  <!-- Header Bar -->
+  <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <a href="{% url 'bulk_verifier' %}" style="font-size: 0.9rem; font-weight: 600;">← Back to Bulk Jobs</a>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{% url 'reports' %}" class="btn btn-secondary btn-sm">View Saved Exports ↗</a>
+      <button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">↻ Refresh Data</button>
+    </div>
+  </div>
+
+  <!-- Live Progress Bar Card (for active or completed jobs) -->
+  <div class="card" style="padding: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <div>
+        <span style="font-size: 0.82rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Batch Progress</span>
+        <h3 id="progressStatusText" style="font-size: 1.25rem; margin-top: 0.2rem; text-transform: capitalize;">
+          Status: <span id="statusBadge" class="badge" style="background: #f1f5f9; color: #334155;">{{ job.status }}</span>
+        </h3>
+      </div>
+      <div style="text-align: right;">
+        <span id="progressPctText" style="font-size: 1.5rem; font-weight: 800; color: #2563eb;">
+          {% if job.status == 'completed' %}100%{% else %}0%{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Animated Progress Bar -->
+    <div style="width: 100%; height: 12px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; margin-bottom: 1.5rem;">
+      <div id="progressBarFill" style="height: 100%; width: {% if job.status == 'completed' %}100%{% else %}10%{% endif %}; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 9999px; transition: width 0.4s ease;"></div>
+    </div>
+
+    <!-- Metrics Breakdown Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; text-align: center; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+      <div>
+        <div class="metric-title">Total Rows</div>
+        <div style="font-size: 1.4rem; font-weight: 700;">{{ job.total_rows }}</div>
+      </div>
+      <div>
+        <div class="metric-title">Valid Emails</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: #059669;">{{ job.valid_rows }}</div>
+      </div>
+      <div>
+        <div class="metric-title">Duplicate Rows</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: #b45309;">{{ job.duplicate_rows }}</div>
+      </div>
+      <div>
+        <div class="metric-title">Invalid Syntax</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: #dc2626;">{{ job.invalid_rows }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Processed Batch Rows (First 100 Items)</h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">Neutralized spreadsheet export available</span>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Raw Input</th>
+            <th>Normalized Address</th>
+            <th>State</th>
+            <th>Verification Status</th>
+            <th>Reason Codes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+            <tr>
+              <td>{{ r.row_number }}</td>
+              <td class="mono">{{ r.raw_value|truncatechars:28 }}</td>
+              <td class="mono"><strong>{{ r.email_normalized|default:"-" }}</strong></td>
+              <td style="text-transform: capitalize;">{{ r.state }}</td>
+              <td>
+                {% if r.verification %}
+                  <span class="badge {{ r.verification.status }}">{{ r.verification.status }}</span>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Pending</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.verification %}
+                  {% for code in r.verification.reason_codes %}
+                    <span class="chip">{{ code }}</span>
+                  {% empty %}
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">Clean</span>
+                  {% endfor %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Real-time Polling Script (Phase 3) -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  var currentStatus = "{{ job.status }}";
+  var jobId = "{{ job.id }}";
+
+  if (currentStatus === "queued" || currentStatus === "running") {
+    var pollInterval = setInterval(function() {
+      fetch("/api/v1/jobs/" + jobId, {
+        headers: { "Accept": "application/json" }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && data.status) {
+          var status = data.status;
+          var counts = data.progress_counts || {};
+          var total = data.result_count || 1;
+          var processed = counts.processed || 0;
+          var pct = Math.min(100, Math.round((processed / total) * 100));
+
+          document.getElementById("progressBarFill").style.width = pct + "%";
+          document.getElementById("progressPctText").innerText = pct + "%";
+          document.getElementById("statusBadge").innerText = status;
+
+          if (status === "completed" || status === "failed" || status === "cancelled") {
+            clearInterval(pollInterval);
+            document.getElementById("progressBarFill").style.width = "100%";
+            document.getElementById("progressPctText").innerText = "100%";
+            setTimeout(function() { location.reload(); }, 1200);
+          }
+        }
+      })
+      .catch(function(err) {
+        console.warn("Polling status update error:", err);
+      });
+    }, 2500);
+  }
+});
+</script>
+{% endblock %}

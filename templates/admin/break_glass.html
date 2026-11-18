@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Break-Glass View: {{ target_user.email }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px;">
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{% url 'admin_dashboard' %}" style="font-size: 0.9rem; font-weight: 600;">← Back to Admin Portal</a>
+  </div>
+
+  <div class="card" style="border: 2px solid #f59e0b; background: #fffdf5;">
+    <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 700; margin-bottom: 0.5rem;">Audited Access Active</span>
+    <h3 style="font-size: 1.35rem; margin-top: 0.25rem;">Audited Record Inspection for {{ target_user.email }}</h3>
+    <p style="color: #78350f; font-size: 0.92rem; margin-top: 0.25rem;">
+      <strong>Logged Justification Reason:</strong> {{ justification_reason }}
+    </p>
+  </div>
+
+  <!-- User's Verifications -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">User's Email Verifications</h3>
+    </div>
+    {% if verifications %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Reasons</th>
+              <th>Verified At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in verifications %}
+              <tr>
+                <td class="mono"><strong>{{ v.email_normalized }}</strong></td>
+                <td><span class="badge {{ v.status }}">{{ v.status }}</span></td>
+                <td>
+                  {% for r in v.reason_codes %}
+                    <span class="chip">{{ r }}</span>
+                  {% endfor %}
+                </td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ v.verified_at|date:"Y-m-d H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1.5rem;">No verifications found for this user.</p>
+    {% endif %}
+  </div>
+
+  <!-- User's Finder Jobs -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">User's Finder Jobs</h3>
+    </div>
+    {% if finder_jobs %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Status</th>
+              <th>Results</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for j in finder_jobs %}
+              <tr>
+                <td style="text-transform: capitalize;">{{ j.kind }}</td>
+                <td><span class="badge" style="background: #f1f5f9; color: #334155;">{{ j.status }}</span></td>
+                <td>{{ j.result_count }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ j.created_at|date:"Y-m-d H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1.5rem;">No finder jobs found for this user.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

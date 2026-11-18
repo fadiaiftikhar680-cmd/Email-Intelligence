@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Person Finder (Both-Plus){% endblock %}
+
+{% block content %}
+<div style="max-width: 920px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 1.25rem;">Find Professional Contact</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Search by Name + Company pattern analysis or public web profile. Candidates are strictly categorized as <em>Discovered</em> or <em>Inferred</em>.
+        </p>
+      </div>
+    </div>
+
+    <!-- Tabs for Method Selection -->
+    <div style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.75rem; padding-bottom: 0.5rem;">
+      <button type="button" id="tabBtnNameCompany" class="btn btn-secondary btn-sm" onclick="switchMethod('name_company')" style="font-weight: 700;">Method B: Name + Company</button>
+      <button type="button" id="tabBtnProfileUrl" class="btn btn-secondary btn-sm" onclick="switchMethod('profile_url')">Method A: Public Profile URL</button>
+    </div>
+
+    <!-- Form for Method B: Name + Company -->
+    <form id="formNameCompany" method="post" action="{% url 'person_finder' %}">
+      {% csrf_token %}
+      <input type="hidden" name="method" value="name_company">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="full_name">Full Name</label>
+          <input type="text" id="full_name" name="full_name" class="form-input" required placeholder="e.g. Jane Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="company_name">Company Name</label>
+          <input type="text" id="company_name" name="company_name" class="form-input" required placeholder="e.g. Acme Corp">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="company_domain">Company Domain (Optional)</label>
+        <input type="text" id="company_domain" name="company_domain" class="form-input" placeholder="e.g. acme.com">
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <input type="checkbox" id="verify_b" name="verify" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+        <label for="verify_b" style="font-size: 0.9rem; color: #334155;">Automatically verify generated candidate</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Find Person</button>
+    </form>
+
+    <!-- Form for Method A: Profile URL -->
+    <form id="formProfileUrl" method="post" action="{% url 'person_finder' %}" style="display: none;">
+      {% csrf_token %}
+      <input type="hidden" name="method" value="profile_url">
+
+      <div class="form-group">
+        <label class="form-label" for="profile_url">Public Professional Web Profile URL</label>
+        <input type="url" id="profile_url" name="profile_url" class="form-input" placeholder="https://company.com/team/jane-doe">
+        <small style="color: var(--text-muted); font-size: 0.8rem;">
+          Note: Login-gated social networks (e.g. LinkedIn) prohibit automated crawling and will return <em>ACCESS_RESTRICTED</em> per platform policy.
+        </small>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <input type="checkbox" id="verify_a" name="verify" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+        <label for="verify_a" style="font-size: 0.9rem; color: #334155;">Automatically verify discovered contact email</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Inspect Public Profile</button>
+    </form>
+  </div>
+
+  <!-- Recent Searches -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Recent Person Finder Runs</h3>
+    </div>
+
+    {% if recent_jobs %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target Contact</th>
+              <th>Status</th>
+              <th>Candidate Count</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in recent_jobs %}
+              <tr>
+                <td><strong>{{ job.display_target }}</strong></td>
+                <td><span class="badge" style="background: #f1f5f9; color: #334155;">{{ job.status }}</span></td>
+                <td><strong>{{ job.result_count }}</strong></td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ job.created_at|date:"M d, H:i" }}</td>
+                <td>
+                  <a href="{% url 'finder_job_detail' job.id %}" class="btn btn-secondary btn-sm">Inspect</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); text-align: center; padding: 2rem;">No person finder searches yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function switchMethod(method) {
+  var formNC = document.getElementById('formNameCompany');
+  var formPU = document.getElementById('formProfileUrl');
+  var btnNC = document.getElementById('tabBtnNameCompany');
+  var btnPU = document.getElementById('tabBtnProfileUrl');
+
+  if (method === 'name_company') {
+    formNC.style.display = 'block';
+    formPU.style.display = 'none';
+    btnNC.style.fontWeight = '700';
+    btnPU.style.fontWeight = '400';
+  } else {
+    formNC.style.display = 'none';
+    formPU.style.display = 'block';
+    btnNC.style.fontWeight = '400';
+    btnPU.style.fontWeight = '700';
+  }
+}
+</script>
+{% endblock %}
+

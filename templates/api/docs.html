@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Public API Documentation (v1){% endblock %}
+
+{% block content %}
+<div style="max-width: 1040px;">
+  <!-- Header Card with Swagger link -->
+  <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h2 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Developer API Documentation</h2>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Integrate deterministic email verification and public contact discovery directly into your workflows.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{% url 'swagger-ui' %}" target="_blank" class="btn btn-primary btn-sm">Interactive Swagger UI ↗</a>
+      <a href="{% url 'redoc' %}" target="_blank" class="btn btn-secondary btn-sm">Redoc View ↗</a>
+    </div>
+  </div>
+
+  <!-- Authentication -->
+  <div class="card">
+    <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem;">1. Authentication</h3>
+    <p style="color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+      All requests to <code class="mono">/api/v1/*</code> require an active API key supplied in the <code class="mono">Authorization</code> HTTP header:
+    </p>
+    <div style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem; margin-bottom: 1rem;">
+      Authorization: Api-Key eip_1a2b3c4d_your_secret_key_here
+    </div>
+  </div>
+
+  <!-- Endpoints Overview -->
+  <div class="card">
+    <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">2. Core Public Endpoints</h3>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Method & Path</th>
+            <th>Purpose</th>
+            <th>Required Scope</th>
+            <th>Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="chip" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">POST</span> <code class="mono">/api/v1/email/verify</code></td>
+            <td>Verify single email deliverability signals</td>
+            <td><code class="mono">email:verify</code></td>
+            <td>Synchronous</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">POST</span> <code class="mono">/api/v1/email/verify/bulk</code></td>
+            <td>Submit email list or CSV/XLSX for bulk verification</td>
+            <td><code class="mono">bulk:write</code></td>
+            <td>Asynchronous (202)</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #f1f5f9; color: #334155; font-weight: 700;">GET</span> <code class="mono">/api/v1/jobs/{id}</code></td>
+            <td>Get job status and progress counts</td>
+            <td><code class="mono">jobs:read</code></td>
+            <td>Synchronous</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #f1f5f9; color: #334155; font-weight: 700;">GET</span> <code class="mono">/api/v1/jobs/{id}/results</code></td>
+            <td>Retrieve paginated results for a completed job</td>
+            <td><code class="mono">jobs:read</code></td>
+            <td>Synchronous</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">POST</span> <code class="mono">/api/v1/finder/company</code></td>
+            <td>Launch bounded crawl of company website</td>
+            <td><code class="mono">finder:run</code></td>
+            <td>Asynchronous (202)</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">POST</span> <code class="mono">/api/v1/finder/person</code></td>
+            <td>Find person by name+company or public URL</td>
+            <td><code class="mono">finder:run</code></td>
+            <td>Asynchronous (202)</td>
+          </tr>
+          <tr>
+            <td><span class="chip" style="background: #f1f5f9; color: #334155; font-weight: 700;">GET</span> <code class="mono">/api/v1/usage</code></td>
+            <td>Get account usage metrics and quotas</td>
+            <td><code class="mono">usage:read</code></td>
+            <td>Synchronous</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Curl Example -->
+  <div class="card">
+    <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem;">3. Quick Code Sample (cURL)</h3>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.5rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.88rem; overflow-x: auto; line-height: 1.5;">
+curl -X POST https://api.emailintelligence.local/api/v1/email/verify \
+  -H "Authorization: Api-Key $YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "contact@example.com"}'
+    </pre>
+  </div>
+</div>
+{% endblock %}
+

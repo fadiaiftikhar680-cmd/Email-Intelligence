@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block page_title %}People Intelligence: {{ person.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 840px;">
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{% url 'intelligence_directory' %}" style="font-size: 0.9rem; font-weight: 600;">← Back to Intelligence Directory</a>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+      <div>
+        <h2 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ person.full_name }}</h2>
+        <div style="font-size: 1.05rem; color: #475569; font-weight: 500;">
+          {{ person.job_title|default:"Professional Contact" }}
+          {% if person.company %}
+            at <strong><a href="{% url 'company_intelligence' person.company.id %}">{{ person.company.name }}</a></strong>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        {% if person.profile_url %}
+          <a href="{{ person.profile_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Public Profile ↗</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Contact Candidates -->
+    <h4 style="font-size: 1.05rem; margin: 1.5rem 0 0.75rem;">Discovered or Inferred Addresses</h4>
+    {% if emails %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Origin</th>
+              <th>Method</th>
+              <th>Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for em in emails %}
+              <tr>
+                <td class="mono"><strong>{{ em.email_normalized }}</strong></td>
+                <td><span class="badge {{ em.origin }}">{{ em.origin }}</span></td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ em.method }}</td>
+                <td><span class="chip">{{ em.category }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1rem 0;">No direct email addresses associated with this person record.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,5831 @@
+Email Intelligence Platform
+
+Find. Verify. Enrich.
+
+Complete End-to-End Technical and Product Documentation
+
+Documentation package v0.2.0 (pre-development audit revision)
+
+Status: documentation only. Readiness score 73/100. Decisions awaiting approval: see Part 21.
+
+Date: 30 October 2026
+
+0. About This Document
+
+This is the consolidated documentation package for the Email Intelligence Platform (positioning: "Find. Verify. Enrich."). It combines the 18 deliverables required by the master prompt into one Word file. Each deliverable is a numbered Part (1 to 18). Parts 19 to 24 are the v0.2.0 pre-development audit: consistency audit, findings, decision register, SMTP/hosting/security/legal validation, AI coding agent instructions and readiness score.
+
+Scope: documentation only. No application source code is included and no implementation phase has been started.
+
+0.1 Status labels
+
+To avoid silently turning assumptions into requirements, every non-trivial statement carries or sits under one of these labels.
+
+Label
+
+Meaning
+
+[Confirmed]
+
+A product decision fixed by the master prompt. Not to be changed without explicit authorization.
+
+[Proposed]
+
+A technical decision recommended by this document. Reasonable, but open to change.
+
+[Assumption]
+
+Something taken as true for planning, not yet verified.
+
+[Open]
+
+An unresolved question. No answer has been invented.
+
+[Limitation]
+
+A technical or practical constraint that cannot be removed by design.
+
+[Validate]
+
+Needs legal, provider, hosting or version validation before implementation.
+
+0.2 Confirmed product decisions
+
+Decision
+
+Confirmed value
+
+Person Finder
+
+Both-Plus: profile URL search and name + company search in one module. Discovered and inferred emails are always labeled separately. Return null if no reliable email.
+
+Access model
+
+Free. Public registration. No mandatory paid plan, no fixed monthly verification quota. Responsible-use limits only. Never advertise literally unlimited throughput.
+
+Discovery sources
+
+Public sources only. No login bypass, CAPTCHA bypass, private data or mandatory paid data providers.
+
+API model
+
+Internal APIs (own frontend) and Public APIs (API-key authenticated, versioned, documented, rate limited). Separate authorization.
+
+AI
+
+Optional. Core finder and verifier work without any AI model. AI never declares an email deliverable.
+
+Architecture
+
+Modular monolith. Django Templates frontend (no separate React or Next.js project). No microservices without a demonstrated need.
+
+0.3 Contents
+
+Part 1: README
+
+Part 2: Product Requirements (PRD)
+
+Part 3: Architecture
+
+Part 4: Database Design
+
+Part 5: API Specification
+
+Part 6: Email Verification Engine
+
+Part 7: Email Finder Engine
+
+Part 8: Security and Privacy
+
+Part 9: Rules
+
+Part 10: UI/UX Specification
+
+Part 11: Workflows
+
+Part 12: Testing and QA
+
+Part 13: Deployment and DevOps
+
+Part 14: Development Phases
+
+Part 15: Error Handling
+
+Part 16: Integrations and Credentials
+
+Part 17: Limitations and Assumptions
+
+Part 18: Changelog
+
+Part 19: Cross-Document Consistency Audit
+
+Part 20: Pre-Development Audit Findings
+
+Part 21: Decision Register (approval required)
+
+Part 22: Validation of SMTP, Hosting, Security and Legal Considerations
+
+Part 23: AI Coding Agent Instructions
+
+Part 24: Final Readiness Score
+
+0.4 What is new in version 0.2.0
+
+Pre-development audit (Parts 19 to 22) with 22 findings and a decision register of 22 items awaiting your approval.
+
+Screen-by-screen UI specification (Part 10) and a revised roadmap with a decision gate (Part 14).
+
+Folder and file structure (Part 3.9), error taxonomy completed (Part 15), workflows completed (Part 11).
+
+AI coding agent instructions with self-review procedure (Part 23) and a readiness score of 73 out of 100 (Part 24).
+
+Critical warning: hosts named for initial deployment in the master prompt restrict outbound SMTP port 25, which mailbox-level verification needs (Part 22.2). Decisions D-02 and D-03 must be made before Phase 3.
+
+Part 1: README
+
+1.1 Project introduction
+
+The Email Intelligence Platform lets individuals, businesses, sales professionals, recruiters, marketers, developers and organizations discover publicly available professional email addresses, verify email deliverability signals, analyze companies and professional contacts, process email lists in bulk, and integrate through APIs. [Confirmed]
+
+The platform is intended to be publicly accessible globally, subject to applicable laws, technical availability and supported deployment regions. [Confirmed]
+
+1.2 Three core engines
+
+Engine
+
+Role
+
+Works without AI?
+
+Email Finder Engine
+
+Discovers publicly listed business emails from company pages and permitted public professional pages. Tracks source and method for each result.
+
+Yes
+
+Email Verification Engine
+
+Collects technical evidence (syntax, DNS, MX, SMTP, catch-all) and applies deterministic classification rules.
+
+Yes (AI is never involved)
+
+Company and People Intelligence Engine
+
+Collects only publicly evidenced business and professional facts with source tracking.
+
+Yes (AI optional for structuring unstructured text)
+
+1.3 Goals
+
+Provide a free, professional, reliable Find / Verify / Enrich experience.
+
+Be honest about accuracy: never promise 100% verification and never label inconclusive results as verified.
+
+Be safe by design: SSRF protection, public-only discovery, abuse controls, audit logging.
+
+Be implementable: detailed enough for a development team or AI coding agent.
+
+1.4 Technology baseline (summary)
+
+[Proposed, per master prompt baseline] Python 3.12 or compatible, Django 5.2 LTS, Django REST Framework, PostgreSQL, Redis, Celery (and Celery Beat for scheduled work), Gunicorn, Django Templates with HTML/CSS/JavaScript. Full table in Part 3.
+
+1.5 Setup overview
+
+Detailed setup is in Part 13. In summary, a developer will: clone the repository, copy .env.example to .env and fill values, start PostgreSQL and Redis (via Docker Compose), run Django migrations, start the Django web process, a Celery worker and Celery Beat, and run the test suite with pytest.
+
+[Assumption] Windows and Linux developer machines are both possible; Docker Compose is the recommended common path.
+
+Part 2: Product Requirements Document (PRD)
+
+2.1 Problem statement
+
+Finding and checking business email addresses is usually split across several tools, many of them paid, and results are often presented with more certainty than the underlying evidence supports. Users need a single free platform that finds publicly listed emails, shows where each came from, and verifies technical deliverability signals honestly.
+
+2.2 Product vision
+
+A trustworthy, evidence-based email discovery and verification platform where every result explains its source and its evidence level.
+
+2.3 Goals and non-goals
+
+Goals
+
+Non-goals
+
+Free core finder and verifier
+
+Public and internal APIs
+
+Bulk CSV/XLSX processing
+
+Evidence and source tracking on every result
+
+Optional AI only
+
+Mandatory paid plans or subscription gates
+
+Private or paid email databases as mandatory dependencies
+
+Access to private or restricted professional profile data
+
+Guaranteed mailbox verification or 100% accuracy
+
+Microservices or a separate React/Next.js frontend
+
+Source code in this documentation task
+
+2.4 Target users and personas
+
+[Proposed] Personas are illustrative planning aids, not research findings.
+
+Persona
+
+Need
+
+Primary modules
+
+Sales professional
+
+Find and verify contact emails for a target company.
+
+Company Finder, Person Finder, Single/Bulk Verifier
+
+Recruiter
+
+Find public business contact for a candidate's employer; check list quality.
+
+Person Finder, Bulk Verifier
+
+Marketer
+
+Clean an existing email list before use.
+
+Bulk Verifier, Reports
+
+Developer
+
+Integrate verification and finder into an application.
+
+Public API, API Management
+
+Administrator
+
+Keep the platform healthy and safe.
+
+Admin Panel, Audit
+
+2.5 User stories
+
+As a visitor, I can register, verify my email and log in so that my history is saved.
+
+As a user, I can submit a company website and see publicly listed emails with their source pages.
+
+As a user, I can search a person by profile URL or by name and company and see discovered and inferred candidates labeled separately.
+
+As a user, I can verify one email and see the status, reason codes and evidence.
+
+As a user, I can upload a CSV or XLSX, choose the email column, monitor progress and export results.
+
+As a developer, I can create an API key, see it once, and call the public API with documented schemas.
+
+As an admin, I can monitor jobs, workers, queues and abuse signals, with all sensitive access audited.
+
+2.6 Functional requirements
+
+ID
+
+Requirement
+
+Module
+
+FR-01
+
+Registration, login, logout, email verification, password reset, optional Google OAuth, profile, settings, session management, account deletion, role-based access control.
+
+1
+
+FR-02
+
+Dashboard showing only metrics derivable from stored data.
+
+2
+
+FR-03
+
+Company Email Finder: public pages crawled within limits; emails extracted, normalized, deduplicated, source-tracked and classified.
+
+3
+
+FR-04
+
+Person Finder Both-Plus: profile URL method and name + company method; discovered vs inferred vs unknown vs not found.
+
+4
+
+FR-05
+
+Single email verification with statuses Deliverable, Undeliverable, Risky, Unknown and reason codes.
+
+5
+
+FR-06
+
+Bulk verification for CSV/XLSX with background chunked processing, progress, retry, cancel, export.
+
+6
+
+FR-07
+
+Combined Finder + Verifier workflow with separated discovery, candidate generation, verification and final classification.
+
+7
+
+FR-08
+
+Company Intelligence with source-tracked public facts; null or Unknown when not established.
+
+8
+
+FR-09
+
+People Intelligence sharing the same extraction and source-tracking engines as Person Finder.
+
+9
+
+FR-10
+
+Search history, reports, CSV/XLSX export, retention and deletion controls; owner-only access.
+
+10
+
+FR-11
+
+API key lifecycle, usage and request history, API documentation.
+
+11
+
+FR-12
+
+Admin panel with audited access to operational data.
+
+12
+
+2.7 Non-functional requirements
+
+Area
+
+Requirement
+
+Security
+
+Designed in from the start (Part 8). SSRF protection mandatory for every outbound fetch.
+
+Reliability
+
+Idempotent background jobs; defined recovery for worker crash, Redis or database outage.
+
+Scalability
+
+Modular monolith first; scale by adding workers and resources (Part 3). No unlimited-capacity claims.
+
+Honesty of results
+
+No result may be labeled verified or deliverable without evidence rules being met.
+
+Usability
+
+Consistent design system; defined loading, empty, success and error states on every page.
+
+Maintainability
+
+Clear app boundaries, shared engines, no duplicate extraction logic.
+
+2.8 Success metrics
+
+[Proposed] Only metrics derivable from stored data are used. Target values are not invented here; they are an [Open] item for the product owner.
+
+Number of registered users and active users (from User and activity records).
+
+Searches and verifications completed per period (from FinderJob, EmailVerification, BulkJob).
+
+Share of finder jobs ending in each status (completed, failed, access restricted).
+
+Share of verification results by status and reason code.
+
+API key adoption and public API request volume (from UsageRecord / API request records).
+
+Job failure and retry rates (from job and task records).
+
+2.9 Constraints
+
+Public-only discovery; no mandatory paid external data providers.
+
+No mandatory paid email verification API.
+
+Free access model; responsible-use limits permitted.
+
+Django Templates frontend; no separate frontend project.
+
+Documentation task only at this stage.
+
+2.10 Acceptance criteria (per module)
+
+Module-level acceptance criteria are defined in Part 12 (Testing and QA) and per phase in Part 14.
+
+Part 3: Architecture
+
+3.1 Architecture style [Confirmed]
+
+A modular monolith. One Django codebase with clearly bounded apps, shared engines under a core package, and Celery workers that run the same codebase. A microservice split requires a demonstrated technical requirement, which does not exist at this stage.
+
+3.2 Logical components
+
+Component
+
+Responsibility
+
+Type of logic
+
+Web layer (Django views and templates)
+
+Renders pages, handles forms, sessions, CSRF.
+
+Presentation
+
+Internal API (DRF, session auth)
+
+JSON endpoints for the platform's own frontend.
+
+API
+
+Public API (DRF, API-key auth, /api/v1/)
+
+External developer access.
+
+API
+
+Core: email_engine
+
+Verification checks and classification rules.
+
+Business logic
+
+Core: finder_engine
+
+URL safety, crawling, extraction, source tracking.
+
+Business logic
+
+Core: security
+
+SSRF guard, API key utilities, permission helpers.
+
+Business logic
+
+Core: storage
+
+File storage abstraction (local or S3-compatible).
+
+Infrastructure
+
+Celery workers
+
+Run crawl, verification and bulk chunk tasks.
+
+Background tasks
+
+SMTP probe worker [Proposed, D-02]
+
+Same codebase, consumes only the smtp_probe queue; deployed on a host that permits outbound port 25. Not a new service type.
+
+Background tasks
+
+Celery Beat
+
+Scheduled maintenance (retention cleanup, stale job detection).
+
+Background tasks
+
+PostgreSQL
+
+System of record.
+
+Data
+
+Redis
+
+Celery broker; cache and throttling counters.
+
+Infrastructure
+
+3.3 Architecture diagram (text form)
+
+Browser --> Nginx --> Gunicorn/Django (templates + Internal API + Public API)
+
+                              |-- PostgreSQL (state, results)
+
+                              |-- Redis (broker, cache, throttle)
+
+                              '-- enqueues Celery tasks
+
+Celery workers --> core.email_engine (DNS/SMTP)
+
+               --> core.finder_engine (HTTPX crawl, SSRF guard)
+
+               --> PostgreSQL / storage (results, exports)
+
+Optional: AI provider (extraction help only, never verification)
+
+3.4 Application boundaries
+
+Each app owns its models and views. Apps do not duplicate the engines: extraction and source tracking live only in core.finder_engine, and verification logic lives only in core.email_engine. Apps call engines through service functions.
+
+3.5 Internal vs public API [Confirmed]
+
+Aspect
+
+Internal API
+
+Public API
+
+Consumer
+
+Platform's own Django-template frontend
+
+External developers and businesses
+
+Authentication
+
+Django session + CSRF
+
+Platform-generated API key
+
+Prefix
+
+/internal/api/ [Proposed]
+
+/api/v1/
+
+Authorization
+
+User role and record ownership; admin endpoints require admin role
+
+Key scopes and key owner's records only
+
+Versioning
+
+Not a stability contract
+
+Versioned; breaking changes require a new version
+
+Throttling
+
+Per user/IP
+
+Per API key
+
+3.6 Technology stack decisions [Proposed]
+
+Each technology is classified. Optional items are not installed until the stated need appears. Versions other than those named in the master prompt are not asserted here and must be pinned during Phase 1 [Validate].
+
+Technology
+
+Purpose / where used
+
+Status
+
+Notes and alternatives
+
+Python 3.12 (or compatible)
+
+Backend and processing
+
+Mandatory
+
+Per baseline.
+
+Django 5.2 LTS
+
+Web framework, ORM, templates, auth base
+
+Mandatory
+
+Per baseline.
+
+Django REST Framework
+
+Internal and public APIs
+
+Mandatory
+
+drf-spectacular
+
+OpenAPI schema generation for public API docs
+
+Mandatory (public API docs)
+
+Generates API documentation.
+
+PostgreSQL
+
+Primary database
+
+Mandatory
+
+Redis
+
+Celery broker, cache, throttle counters
+
+Mandatory
+
+Celery / Celery Beat
+
+Background jobs / scheduled tasks
+
+Mandatory / Mandatory (scheduled cleanup)
+
+Gunicorn + Nginx
+
+App server and reverse proxy
+
+Mandatory in production
+
+email-validator
+
+Syntax and IDN-aware validation; can optionally check deliverability DNS
+
+Mandatory
+
+Establishes syntax/domain format only, not mailbox existence.
+
+dnspython
+
+DNS and MX lookups with timeouts
+
+Mandatory
+
+Domain-level evidence only.
+
+smtplib / socket (stdlib)
+
+SMTP conversation for RCPT probing
+
+Mandatory
+
+Cannot guarantee mailbox existence.
+
+idna
+
+IDN encoding
+
+Mandatory (usually via dependencies)
+
+Do not add separately if already pulled in.
+
+tldextract
+
+Registrable-domain extraction
+
+Optional
+
+[Validate] Public Suffix List handling when offline.
+
+HTTPX
+
+HTTP client for crawling
+
+Mandatory
+
+Timeouts, size limits, controlled redirects.
+
+BeautifulSoup4 + lxml
+
+HTML parsing
+
+Mandatory
+
+urllib.parse / urllib.robotparser (stdlib)
+
+URL handling, robots rules
+
+Mandatory
+
+Scrapy
+
+Large-scale crawling
+
+Optional / deferred
+
+Only if HTTPX-based crawler proves insufficient.
+
+Playwright
+
+JavaScript-rendered public pages
+
+Optional / deferred
+
+Only where public content truly requires JS rendering.
+
+trafilatura
+
+Main-content extraction
+
+Optional
+
+Only if it improves company info extraction.
+
+csv (stdlib), OpenPyXL
+
+CSV and XLSX bulk handling and export
+
+Mandatory
+
+Pandas
+
+Tabular processing
+
+Optional
+
+Not required for basic CSV/XLSX; avoid heavy dependency unless justified.
+
+Argon2
+
+Password hashing
+
+Mandatory
+
+Django-supported hasher.
+
+django-axes
+
+Login brute-force protection
+
+Recommended
+
+django-ratelimit
+
+View-level rate limiting
+
+Optional
+
+Avoid overlap with DRF throttling for APIs.
+
+Sentry
+
+Error monitoring
+
+Optional
+
+[Validate] data handling terms.
+
+Docker / Docker Compose
+
+Reproducible environments
+
+Mandatory for local dev
+
+pytest, pytest-django, factory-boy
+
+Testing
+
+Mandatory
+
+httpx (tests), Locust
+
+API tests / load tests
+
+Optional / Recommended
+
+Bandit, pip-audit
+
+Static security scan and dependency audit
+
+Recommended (CI)
+
+3.7 Background processing summary
+
+Details are in Part 11 and Part 13. Tasks are chunked, idempotent, retried with exponential backoff, and tracked by status in the database. The initial deployment has finite capacity; scaling is by adding workers, queues and database resources.
+
+3.8 Scalability path [Proposed]
+
+Single host: web, one or more workers, PostgreSQL, Redis.
+
+Separate worker hosts; separate queues for crawl and verification workloads.
+
+Managed PostgreSQL and Redis; object storage for exports and uploads.
+
+Read replicas or caching only if measured need appears.
+
+Extract a component into a service only if a measured requirement justifies it.
+
+3.9 Folder and file structure [Proposed, improves the master prompt starting point]
+
+Changes from the starting structure: verification_history and reports are merged into history_reports (same data and ownership rules); company_intelligence and people_intelligence are merged into intelligence pending D-17 (shared extraction and source models); notifications becomes a service module (no model or pages); an smtp_probe queue is added. Empty or duplicate apps are avoided.
+
+email-intelligence-platform/
+
+  manage.py  requirements.txt  .env.example  .gitignore
+
+  Dockerfile  docker-compose.yml  README.md
+
+  config/
+
+    settings/ (base.py, development.py, production.py)
+
+    urls.py  celery.py  asgi.py  wsgi.py
+
+  apps/
+
+    accounts/          users, profile, auth views, roles, email service wrapper
+
+    dashboard/         aggregate queries and dashboard views
+
+    email_verifier/    single verification views, services
+
+    bulk_processing/   uploads, jobs, chunks, tasks, exports trigger
+
+    email_finder/      company and person finder views, jobs, orchestration
+
+    intelligence/      company and people facts (D-17)
+
+    history_reports/   history views, exports, retention tasks
+
+    api_management/    API keys, usage, request log, public API (v1)
+
+    admin_management/  admin panel views (no models)
+
+    audit/             AuditLog model and writer
+
+  core/
+
+    email_engine/      syntax, dns, smtp client, rules, data lists
+
+    finder_engine/     safe_fetch, robots, crawler, extractor, classifier
+
+    security/          ssrf guard, api key utils, permissions
+
+    storage/           local and S3-compatible storage backend
+
+    utilities/         constants (reason and error codes), time, normalization
+
+  templates/ (base.html, components/, accounts/, dashboard/, finder/, verifier/,
+
+              intelligence/, history/, reports/, api/, admin/, legal/)
+
+  static/ (css/, js/, icons/)
+
+  tests/ (accounts/, verifier/, bulk/, finder/, api/, security/, admin/)
+
+  scripts/  docs/  logs/  media/ (git-ignored, local only)
+
+3.10 Application responsibilities
+
+App or package
+
+Responsibility
+
+Logic type
+
+Depends on
+
+accounts
+
+Users, profile, settings, roles, auth flows, email verification, account deletion
+
+Business, presentation
+
+audit, core/security
+
+dashboard
+
+Read-only aggregates from other apps
+
+Presentation, queries
+
+all data apps (read only)
+
+email_verifier
+
+Single verification UI and service calls
+
+Presentation
+
+core/email_engine
+
+bulk_processing
+
+Upload, validation, job and chunk lifecycle, tasks
+
+Business, background
+
+core/email_engine, core/storage
+
+email_finder
+
+Company and person finder jobs, orchestration, combined workflow
+
+Business, background
+
+core/finder_engine, core/email_engine
+
+intelligence
+
+Company and person facts with sources
+
+Business, presentation
+
+email_finder models
+
+history_reports
+
+History pages, exports, retention
+
+Presentation, background
+
+all data apps
+
+api_management
+
+Key lifecycle, public API layer, usage
+
+API, business
+
+email_verifier, bulk_processing, email_finder
+
+admin_management
+
+Admin pages and operations
+
+Presentation
+
+audit, all apps (audited access)
+
+audit
+
+Append-only audit trail
+
+Business
+
+none
+
+core/email_engine
+
+Verification checks and rules
+
+Business
+
+dnspython, email-validator, smtplib
+
+core/finder_engine
+
+Safe fetch, crawl, extract
+
+Business
+
+HTTPX, BeautifulSoup4, lxml, core/security
+
+core/security
+
+SSRF guard, key utilities, permission helpers
+
+Business
+
+none
+
+core/storage
+
+File storage abstraction
+
+Infrastructure
+
+none
+
+Part 4: Database Design
+
+All models are [Proposed]. Primary keys are UUIDs for externally visible records [Proposed] (avoids guessable IDs); internal lookup tables may use integer keys. All tables carry created_at; mutable tables also carry updated_at. Timestamps are stored in UTC.
+
+4.1 Models
+
+Model
+
+Purpose
+
+Key fields
+
+Constraints / indexes
+
+Retention
+
+User
+
+Authentication identity
+
+id, email, password_hash, is_active, email_verified_at, role, last_login_at
+
+Unique(lower(email)); index on role
+
+Until account deletion
+
+UserProfile
+
+Profile and settings (one-to-one with User)
+
+user_id, display_name, timezone, retention_days, notification prefs
+
+Unique(user_id)
+
+With user
+
+APIKey
+
+Customer API keys
+
+id, user_id, name, prefix, key_hash, scopes, status, created_at, last_used_at, revoked_at
+
+Unique(prefix); index(user_id,status). Full key never stored
+
+Revoked keys kept for audit
+
+Company
+
+Public company facts
+
+id, owner_id, name, domain, website, description, industry, phone, address, source_url, evidence
+
+Unique(owner_id, domain)
+
+User retention setting
+
+Person
+
+Public professional facts
+
+id, owner_id, full_name, job_title, company_id, profile_url, source_url
+
+Index(owner_id, company_id)
+
+User retention setting
+
+FinderJob
+
+One finder run (company or person)
+
+id, owner_id, kind(company|person_url|person_name), input_json, status, started_at, finished_at, result_count, error_code, idempotency_key
+
+Index(owner_id, created_at); unique(owner_id, idempotency_key) where not null
+
+User retention setting
+
+CrawlPage
+
+Page visited by a finder job
+
+id, job_id, url, final_url, http_status, robots_allowed, fetched_at, content_hash, error_code
+
+Unique(job_id, url); index(job_id)
+
+Short; metadata only, no full page body stored by default [Assumption]
+
+DiscoveredEmail
+
+Email found or inferred
+
+id, owner_id, job_id, person_id nullable, company_id nullable, email_normalized, origin(discovered|inferred), method, source_page_id nullable, category, evidence_level, found_at
+
+Unique(job_id, email_normalized); index(owner_id, email_normalized)
+
+User retention setting
+
+EmailVerification
+
+One verification result
+
+id, owner_id, email_normalized, status, reason_codes, evidence_json, domain_record_id, bulk_record_id nullable, discovered_email_id nullable, verified_at, engine_version
+
+Index(owner_id, verified_at); index(email_normalized)
+
+User retention setting
+
+BulkJob
+
+Bulk verification job
+
+id, owner_id, filename, file_ref, email_column, total_rows, valid_rows, duplicate_rows, invalid_rows, status, progress_counts, created_at, finished_at
+
+Index(owner_id, created_at)
+
+User retention setting; uploaded file deleted after processing or per setting
+
+BulkChunk [added]
+
+Idempotent unit of bulk work
+
+id, bulk_job_id, seq, status, attempts, last_error_code, started_at, finished_at
+
+Unique(bulk_job_id, seq)
+
+With job
+
+BulkRecord
+
+One row of a bulk job
+
+id, bulk_job_id, row_number, raw_value, email_normalized, state, verification_id nullable
+
+Unique(bulk_job_id, row_number); index(bulk_job_id, state)
+
+With job
+
+DomainRecord
+
+Cached domain-level evidence
+
+id, domain, has_mx, mx_hosts, has_address_fallback, is_disposable, is_free_provider, catch_all_state, checked_at, expires_at
+
+Unique(domain)
+
+Cache; expires and is refreshed
+
+UsageRecord
+
+Usage for dashboard and API usage view
+
+id, owner_id, api_key_id nullable, kind, quantity, occurred_at
+
+Index(owner_id, occurred_at)
+
+Per policy
+
+APIRequestLog [added]
+
+API request history shown to users
+
+id, api_key_id, method, path, status_code, duration_ms, occurred_at
+
+Index(api_key_id, occurred_at). No request bodies or secrets
+
+Per policy
+
+ExportRecord [added]
+
+Export history
+
+id, owner_id, source_type, source_id, format, file_ref, created_at, expires_at
+
+Index(owner_id, created_at)
+
+Files expire
+
+SuppressionEntry [added]
+
+Opt-out and suppression handling
+
+id, email_or_domain, reason, created_at, created_by
+
+Unique(email_or_domain)
+
+Kept while needed for suppression
+
+AuditLog
+
+Security and admin audit trail
+
+id, actor_id, action, target_type, target_id, ip, metadata_json, occurred_at
+
+Index(actor_id, occurred_at); append-only
+
+Per policy [Validate]
+
+[added] marks models beyond the prompt's evaluation list. Each has a distinct responsibility: BulkChunk enables idempotent chunk processing; APIRequestLog supports the required API request history; ExportRecord supports export history; SuppressionEntry supports opt-out handling.
+
+4.2 Relationships
+
+Relationship
+
+Type
+
+User - UserProfile
+
+One-to-one
+
+User - APIKey, FinderJob, BulkJob, Company, Person, EmailVerification, ExportRecord, UsageRecord
+
+One-to-many (ownership)
+
+FinderJob - CrawlPage, DiscoveredEmail
+
+One-to-many
+
+Company - Person
+
+One-to-many
+
+BulkJob - BulkChunk, BulkRecord
+
+One-to-many
+
+BulkRecord - EmailVerification
+
+One-to-one (nullable until verified)
+
+DiscoveredEmail - EmailVerification
+
+One-to-many (re-verification history)
+
+DomainRecord - EmailVerification
+
+One-to-many
+
+Many-to-many
+
+None required. Scopes on APIKey stored as a list field.
+
+4.3 ER diagram (Mermaid source)
+
+erDiagram
+
+  USER ||--|| USERPROFILE : has
+
+  USER ||--o{ APIKEY : owns
+
+  USER ||--o{ FINDERJOB : runs
+
+  USER ||--o{ BULKJOB : uploads
+
+  USER ||--o{ EMAILVERIFICATION : owns
+
+  FINDERJOB ||--o{ CRAWLPAGE : visits
+
+  FINDERJOB ||--o{ DISCOVEREDEMAIL : yields
+
+  COMPANY ||--o{ PERSON : employs
+
+  COMPANY ||--o{ DISCOVEREDEMAIL : relates
+
+  PERSON ||--o{ DISCOVEREDEMAIL : relates
+
+  CRAWLPAGE ||--o{ DISCOVEREDEMAIL : source
+
+  BULKJOB ||--o{ BULKCHUNK : splits
+
+  BULKJOB ||--o{ BULKRECORD : contains
+
+  BULKRECORD ||--o| EMAILVERIFICATION : result
+
+  DISCOVEREDEMAIL ||--o{ EMAILVERIFICATION : verified_by
+
+  DOMAINRECORD ||--o{ EMAILVERIFICATION : evidence
+
+  APIKEY ||--o{ APIREQUESTLOG : logs
+
+  USER ||--o{ AUDITLOG : acts
+
+4.4 Ownership and authorization
+
+Every user-visible record carries owner_id. All queries in views and API endpoints are filtered by the authenticated owner. Administrators can read user records only through the audited admin process (Part 8). DomainRecord is shared, non-personal cache data.
+
+4.5 Duplicate prevention and transactions
+
+Unique constraints listed above prevent duplicate emails per job, duplicate rows per bulk job, and duplicate chunks.
+
+Chunk processing writes results and marks the chunk done inside one database transaction; a retried chunk skips records already in a final state.
+
+Idempotency-Key on public API creation endpoints maps to a unique constraint per owner.
+
+Job status transitions are performed with conditional updates to prevent two workers from taking the same chunk.
+
+4.6 Data retention and user deletion
+
+Users control retention for their history within platform-defined bounds [Open: bounds].
+
+Account deletion removes or anonymizes the user's records; audit entries may be retained in minimized form [Validate: legal basis].
+
+Uploaded bulk files are not kept longer than needed to process the job [Proposed].
+
+API key hashes are deleted with the account; request logs follow retention policy.
+
+Part 5: API Specification
+
+5.1 Architecture
+
+Two layers [Confirmed]: Internal API under /internal/api/ for the Django-template frontend (session + CSRF) and Public API under /api/v1/ for external developers (API key). They share services, not views.
+
+5.2 Public API authentication and key lifecycle
+
+Header: Authorization: Api-Key <full key> [Proposed].
+
+Keys are generated with a cryptographically secure random source (Python secrets). Format: a short visible prefix plus a long random secret.
+
+Only a hash of the key and the prefix are stored. The full key is shown once at creation or regeneration.
+
+Because keys are long random values, a fast cryptographic hash is acceptable for storage; passwords use Argon2 [Proposed].
+
+Revocation is immediate. Regeneration revokes the old key and issues a new one.
+
+Each key has scopes: email:verify, bulk:write, finder:run, jobs:read, usage:read, account:read [Proposed].
+
+Security-relevant events (create, revoke, failed auth) are written to AuditLog.
+
+5.3 Public endpoints
+
+The originally proposed endpoints are retained. Proposed refinements are marked.
+
+Method and path
+
+Purpose
+
+Scope
+
+Mode
+
+POST /api/v1/email/verify
+
+Verify one email
+
+email:verify
+
+Synchronous; may return status Unknown on timeout
+
+POST /api/v1/email/verify/bulk
+
+Create bulk verification job from JSON list or file upload
+
+bulk:write
+
+Asynchronous; returns job id (202)
+
+GET /api/v1/jobs/{id}
+
+Job status and progress
+
+jobs:read
+
+Sync read
+
+GET /api/v1/jobs/{id}/results
+
+Paginated results of a job
+
+jobs:read
+
+Sync read
+
+POST /api/v1/jobs/{id}/cancel [Proposed]
+
+Cancel a job
+
+bulk:write or finder:run
+
+Sync
+
+POST /api/v1/finder/company
+
+Start company finder job
+
+finder:run
+
+Asynchronous (202)
+
+POST /api/v1/finder/person
+
+Start person finder job (profile URL or name + company)
+
+finder:run
+
+Asynchronous (202)
+
+GET /api/v1/finder/jobs/{id}
+
+Finder job status and results
+
+jobs:read
+
+Sync read
+
+GET /api/v1/usage
+
+Usage for the key owner
+
+usage:read
+
+Sync read
+
+GET /api/v1/account
+
+Account summary (no secrets)
+
+account:read
+
+Sync read
+
+Refinement note: GET /api/v1/finder/jobs/{id} returns results inline with pagination, so a separate finder results endpoint is not added. Whether /api/v1/jobs/{id} and /api/v1/finder/jobs/{id} should be unified is an [Open] design decision.
+
+5.4 Request and response examples
+
+Verify one email
+
+POST /api/v1/email/verify
+
+Authorization: Api-Key <key>
+
+Content-Type: application/json
+
+ 
+
+{ "email": "info@example.com" }
+
+ 
+
+200 OK
+
+{
+
+  "email": "info@example.com",
+
+  "status": "unknown",
+
+  "reason_codes": ["CATCH_ALL_NOT_DETERMINED", "SMTP_TIMEOUT"],
+
+  "evidence": {
+
+    "syntax_valid": true,
+
+    "domain_exists": true,
+
+    "mx_present": true,
+
+    "smtp_attempted": true,
+
+    "smtp_result": "timeout",
+
+    "level": "domain"
+
+  },
+
+  "is_role_based": true,
+
+  "is_disposable": false,
+
+  "verified_at": "2026-01-01T00:00:00Z"
+
+}
+
+Values above are illustrative only.
+
+Start company finder job
+
+POST /api/v1/finder/company
+
+Idempotency-Key: 7d1c...
+
+{ "url": "https://example.com", "verify": true }
+
+ 
+
+202 Accepted
+
+{ "job_id": "<uuid>", "status": "queued" }
+
+Start person finder job
+
+POST /api/v1/finder/person
+
+{ "method": "name_company",
+
+  "full_name": "Jane Doe",
+
+  "company_name": "Example Ltd",
+
+  "company_domain": "example.com",   // optional
+
+  "verify": true }
+
+ 
+
+or { "method": "profile_url", "profile_url": "https://..." }
+
+Job result item (finder)
+
+{
+
+  "email": "jane.doe@example.com",
+
+  "origin": "inferred",            // discovered | inferred
+
+  "method": "company_pattern",
+
+  "source_url": null,
+
+  "verification": { "status": "unknown", "reason_codes": ["INSUFFICIENT_EVIDENCE"] },
+
+  "evidence_level": "low"
+
+}
+
+Create bulk verification job
+
+POST /api/v1/email/verify/bulk
+
+Idempotency-Key: 3f9a...
+
+Content-Type: application/json
+
+{ "emails": ["a@example.com", "b@example.org"] }
+
+  (or multipart/form-data with file and email_column; limits per D-08)
+
+ 
+
+202 Accepted
+
+{ "job_id": "<uuid>", "status": "queued", "total": 2, "duplicates_removed": 0, "invalid": 0 }
+
+Job status
+
+GET /api/v1/jobs/{id}
+
+200 OK
+
+{ "job_id": "<uuid>", "type": "bulk_verification",
+
+  "status": "running",   // queued | running | completed | failed | cancelled
+
+  "progress": { "total": 1000, "done": 400, "deliverable": 210, "undeliverable": 80,
+
+                 "risky": 40, "unknown": 70 },
+
+  "created_at": "...", "finished_at": null, "error_code": null }
+
+Job results (paginated)
+
+GET /api/v1/jobs/{id}/results?limit=100&cursor=<opaque>
+
+200 OK
+
+{ "items": [ { "email": "a@example.com", "status": "unknown",
+
+               "reason_codes": ["INSUFFICIENT_EVIDENCE"], "evidence_level": "domain" } ],
+
+  "next_cursor": "<opaque or null>" }
+
+Usage and account
+
+GET /api/v1/usage
+
+{ "period": "current_month", "verifications": 1200, "finder_jobs": 14, "requests": 1530 }
+
+ 
+
+GET /api/v1/account
+
+{ "account_id": "<uuid>", "email": "user@example.com", "key": { "prefix": "ab12cd", "scopes": ["email:verify"] } }
+
+(no password, no full key, no internal identifiers)
+
+Cancel job
+
+POST /api/v1/jobs/{id}/cancel
+
+200 OK  { "job_id": "<uuid>", "status": "cancelled" }
+
+409 if the job is already in a terminal state
+
+5.5 Validation, pagination, idempotency, versioning
+
+Request schemas are validated by DRF serializers; unknown fields are rejected [Proposed].
+
+Pagination: cursor-based with limit and cursor parameters [Proposed]; maximum page size is configurable.
+
+Idempotency: POST creation endpoints accept an Idempotency-Key header; a repeated key from the same owner returns the original job [Proposed].
+
+Versioning: URL path (/api/v1/). Breaking changes require /api/v2/. Documentation is generated by drf-spectacular.
+
+5.6 Rate limiting
+
+Per-key throttling using DRF throttling backed by Redis. Exceeded limits return HTTP 429 with a Retry-After header. Specific numeric limits are [Open] and must be derived from measured capacity; no number is promised here.
+
+5.7 Error format
+
+{ "error": { "code": "RATE_LIMIT_EXCEEDED",
+
+             "message": "Too many requests.",
+
+             "request_id": "<id>" } }
+
+HTTP
+
+Code
+
+When
+
+400
+
+VALIDATION_ERROR
+
+Schema or value invalid
+
+401
+
+API_AUTH_FAILED
+
+Missing, invalid or revoked key
+
+403
+
+FORBIDDEN_SCOPE
+
+Key lacks required scope
+
+404
+
+NOT_FOUND
+
+Resource missing or not owned by caller
+
+409
+
+IDEMPOTENCY_CONFLICT
+
+Same key, different payload
+
+413
+
+FILE_TOO_LARGE
+
+Upload exceeds limit
+
+422
+
+UNSUPPORTED_URL / ACCESS_RESTRICTED
+
+Valid request but target not processable
+
+429
+
+RATE_LIMIT_EXCEEDED
+
+Throttled
+
+503
+
+SERVICE_UNAVAILABLE
+
+Redis, database or storage unavailable
+
+Full error taxonomy is in Part 15. Responses never include passwords, full API secrets, infrastructure details or other users' data.
+
+5.8 Internal API (summary)
+
+Area
+
+Endpoints [Proposed]
+
+Auth
+
+Auth
+
+/internal/api/auth/* (register, login, logout, verify-email, password-reset)
+
+Public + CSRF
+
+Dashboard
+
+GET /internal/api/dashboard/summary
+
+Session
+
+Finder
+
+POST /internal/api/finder/company, /person; GET /internal/api/finder/jobs/{id}
+
+Session + CSRF
+
+Verifier
+
+POST /internal/api/verify; POST /internal/api/bulk (upload); GET /internal/api/bulk/{id}; POST /internal/api/bulk/{id}/cancel
+
+Session + CSRF
+
+History and reports
+
+GET /internal/api/history/*; POST /internal/api/exports; DELETE history items
+
+Session + CSRF
+
+API management
+
+GET/POST/DELETE /internal/api/keys
+
+Session + CSRF
+
+Admin
+
+/internal/api/admin/* (users, jobs, workers, queues, abuse, audit)
+
+Session, admin role, audited
+
+Part 6: Email Verification Engine
+
+6.1 What can and cannot be established
+
+Check
+
+Library / mechanism
+
+Can establish
+
+Cannot establish
+
+Syntax
+
+email-validator
+
+Address is well-formed under its rules
+
+That the mailbox exists
+
+IDN
+
+idna / email-validator
+
+Valid internationalized domain encoding
+
+Deliverability
+
+Domain exists
+
+dnspython
+
+DNS resolves or not
+
+Mailbox existence
+
+MX
+
+dnspython
+
+Domain declares mail servers (or address fallback)
+
+That a specific mailbox exists
+
+Disposable / free / role lists
+
+Maintained data lists
+
+Membership in a list
+
+Completeness of the list
+
+SMTP RCPT probing
+
+smtplib / socket
+
+What the server answered at that moment
+
+That mail will reach an inbox; many providers hide or block this
+
+Catch-all test
+
+SMTP probe of a random address
+
+Whether server accepts arbitrary recipients
+
+Always; server behavior may vary
+
+[Limitation] SMTP checks cannot guarantee mailbox existence or inbox delivery. Greylisting, catch-all domains, temporary outages, anti-abuse systems and privacy protections can make a definitive result impossible. 100% accuracy is never promised. [Validated, see Part 22.2] Several hosts, including ones named for initial deployment, restrict outbound port 25. Mailbox-level probing requires a host that permits it (D-02, D-03).
+
+6.2 Pipeline
+
+Normalize: trim, lowercase domain, preserve local part as given; IDN domain to ASCII form for DNS.
+
+Syntax validation. Failure ends the pipeline.
+
+Domain-level checks with caching in DomainRecord: DNS resolution, MX lookup, disposable, free-provider flags.
+
+Address-level flags: role-based local part (e.g. info, support, sales; list maintained as data).
+
+Decide whether SMTP probing is allowed (configuration, domain not on a do-not-probe list).
+
+SMTP probe: connect to MX hosts in preference order, EHLO, MAIL FROM, RCPT TO the address; always QUIT without sending a message.
+
+Catch-all probe: RCPT TO a random non-existent local part on the same domain (cached per domain).
+
+Apply decision rules to produce status, reason codes and evidence level.
+
+6.3 Statuses [Proposed definitions]
+
+Status
+
+Meaning
+
+Deliverable
+
+Syntax and domain checks pass, and a mailbox-level SMTP check accepted the address on a server that does not accept arbitrary recipients. Still not a delivery guarantee.
+
+Undeliverable
+
+Strong negative evidence: invalid syntax, nonexistent domain, no mail route, or a definitive recipient rejection.
+
+Risky
+
+Address may work but carries known uncertainty: catch-all domain, disposable provider, or similar.
+
+Unknown
+
+Evidence is insufficient or inconclusive (timeouts, temporary failures, blocked probing, probing not performed).
+
+6.4 Decision rules (evaluated in order)
+
+#
+
+Condition
+
+Status
+
+Reason code
+
+Evidence level
+
+1
+
+Syntax invalid
+
+Undeliverable
+
+INVALID_SYNTAX
+
+Syntax
+
+2
+
+Domain does not exist (NXDOMAIN)
+
+Undeliverable
+
+DOMAIN_NOT_FOUND
+
+Domain
+
+3
+
+Null MX declared, or no MX and no address (A/AAAA) fallback
+
+Undeliverable
+
+NO_MX_RECORDS
+
+Domain
+
+4
+
+DNS timeout or server failure
+
+Unknown
+
+DNS_TEMPORARY_FAILURE
+
+None
+
+5
+
+SMTP probing not performed (disabled, not permitted, or host cannot reach port 25)
+
+Unknown
+
+INSUFFICIENT_EVIDENCE + PROBE_UNAVAILABLE
+
+Domain
+
+6
+
+All MX connections time out or fail
+
+Unknown
+
+SMTP_TIMEOUT
+
+Domain
+
+7
+
+Recipient rejected with a mailbox-nonexistent type response (permanent)
+
+Undeliverable
+
+SMTP_REJECTION
+
+Mailbox
+
+8
+
+Rejection text indicates policy or reputation block
+
+Unknown
+
+PROVIDER_BLOCKED_PROBING
+
+Domain
+
+9
+
+Temporary (4xx) response persisting after retries
+
+Unknown
+
+TEMPORARY_SERVER_FAILURE (or GREYLISTED if indicated)
+
+Domain
+
+10
+
+Recipient accepted and random-address probe also accepted
+
+Risky
+
+CATCH_ALL_DOMAIN
+
+Domain
+
+11
+
+Recipient accepted and random-address probe rejected
+
+Deliverable
+
+SMTP_ACCEPTED
+
+Mailbox
+
+12
+
+Recipient accepted but catch-all probe inconclusive
+
+Unknown
+
+CATCH_ALL_NOT_DETERMINED
+
+Domain
+
+13
+
+Modifier after rules 1 to 12: disposable domain and base status is Deliverable or Unknown
+
+Risky
+
+DISPOSABLE_ADDRESS
+
+Domain
+
+Rules 1 to 12 are evaluated in order and the first match gives the base status. Rule 13 is a modifier applied afterwards; if the base status is Undeliverable or Risky it is unchanged but DISPOSABLE_ADDRESS is still recorded. Role-based (ROLE_BASED_ADDRESS) and free-provider (FREE_PROVIDER) are informational flags and do not by themselves change the status [Proposed, pending D-10]. The exact mapping of SMTP reply codes and message text to rule 7 versus rule 8 is an [Open] item requiring a documented table built from controlled test servers.
+
+6.5 Retry and timeouts [Proposed]
+
+DNS and SMTP operations use explicit timeouts; values are configuration, not hard-coded.
+
+Temporary SMTP failures are retried with exponential backoff and a maximum attempt count, executed as Celery retries rather than blocking web requests.
+
+Per-domain concurrency and probe rate limits prevent the platform from behaving like an abusive prober.
+
+Results from domain-level checks are cached with an expiry in DomainRecord.
+
+6.6 Result record
+
+Each EmailVerification stores status, reason codes, an evidence object (what was checked and what each check returned), the evidence level (none, syntax, domain, mailbox) and the engine version, so results remain explainable and reproducible.
+
+6.7 AI boundary [Confirmed]
+
+No AI component participates in verification. Classification uses only technical evidence and the rules above.
+
+6.8 Hosting prerequisite and fallback
+
+Mailbox-level checks require outbound TCP port 25 from the probe host. Phase 3 begins with a capability spike on the intended host (Part 14).
+
+If port 25 is unavailable, the engine runs in domain-level mode: syntax, DNS, MX, disposable and role flags only. In that mode no result may be Deliverable; results are Undeliverable (strong negative evidence), Risky (disposable) or Unknown with PROBE_UNAVAILABLE. The UI states this plainly (S-09).
+
+The probe identity (HELO name, MAIL FROM, reverse DNS) must be a real, operator-controlled configuration (D-20). SMTP transcripts are not stored.
+
+Part 7: Email Finder Engine
+
+7.1 Source rules [Confirmed]
+
+Only publicly accessible, legally permissible information. No authentication bypass, no CAPTCHA bypass, no restricted-page access, no paid or private email databases. Website terms, robots policies and privacy law are respected. Public visibility does not automatically mean unrestricted processing. [Validate] jurisdiction-specific legal review is required.
+
+7.2 Safe fetching (applies to every outbound request)
+
+Allow only http and https schemes; restrict ports to defaults (80, 443) unless configured [Proposed].
+
+Normalize URL, extract host, resolve DNS ourselves.
+
+Block loopback, private (RFC 1918), link-local (including the cloud metadata address 169.254.169.254), unique-local and other reserved IPv4 and IPv6 ranges.
+
+Connect to the validated IP (pinning) to reduce DNS-rebinding risk.
+
+Handle redirects manually with a maximum count and re-run all checks on each hop, including the final target.
+
+Enforce connect and read timeouts, a total time budget, and a maximum response size; skip non-text content types.
+
+No credentials, cookies or user headers are forwarded; a clear User-Agent identifying the crawler is used [Proposed].
+
+7.3 Robots and limits [Proposed defaults, configurable]
+
+Control
+
+Default
+
+Robots handling
+
+Fetch and obey robots.txt (urllib.robotparser) for the target host before crawling; disallowed pages are skipped and recorded as robots_allowed = false
+
+Crawl depth
+
+Small (for example 2) from the homepage
+
+Max pages per job
+
+Small fixed cap (for example 30)
+
+Per-domain concurrency
+
+Low (for example 1 to 2) with a delay between requests
+
+Max response size
+
+A few MB
+
+Priority pages
+
+Links whose path or text matches contact, about, team, leadership, careers, support, sales, press
+
+Numeric values are proposals pending approval (D-08, Part 21.1) and are tuned in Phase 11.
+
+7.4 Company finder pipeline
+
+Validate and normalize URL; extract domain.
+
+Safety checks and reachability test.
+
+Fetch robots.txt; build page queue starting with the homepage and prioritized links.
+
+Fetch permitted pages within limits; record each in CrawlPage.
+
+Parse HTML (BeautifulSoup4 with lxml). Extract emails from mailto: links and visible text via a conservative pattern.
+
+Normalize (lowercase, strip punctuation and tracking parameters) and deduplicate per job.
+
+Record source page and method (mailto_link or page_text) for each email.
+
+Classify category (general, support, sales, careers, HR, management, press, other, unknown) from local part and page context; use unknown when evidence is weak.
+
+Optionally send emails to the verification engine.
+
+Persist results and set job status.
+
+Obfuscated email formats (for example text written as name [at] domain) may be handled as an optional, clearly labeled method [Proposed]. Protected or script-hidden content is not decoded in ways that circumvent access controls.
+
+7.5 Person finder pipeline (Both-Plus) [Confirmed]
+
+Method A: profile URL
+
+Validate the URL and check it belongs to a supported source type.
+
+Check robots and access rules. If access is restricted or login-gated, return ACCESS_RESTRICTED. Do not attempt to bypass.
+
+Retrieve only accessible content and extract name, title, company and associated domain where present.
+
+Search permitted public company pages (Company Finder pipeline) for a publicly disclosed email for that person.
+
+Record source; verify any discovered email; return structured result.
+
+No claim is made that any professional platform allows automated crawling. Support for specific sources is decided per source after terms review [Validate]. Recommendation (D-05): do not fetch professional-network pages whose terms prohibit automated access; return an unsupported-source or access-restricted result and suggest the name + company method.
+
+Method B: name + company
+
+Validate input: full name, company name, optional domain, optional profile URL.
+
+Identify the company domain from public information (or use the domain supplied).
+
+Search permitted public company pages for a matching person and any explicit email.
+
+Analyze company email patterns only when enough discovered emails exist to support a pattern.
+
+Optionally generate an inferred candidate and label it inferred.
+
+Verify candidates independently; return with sources and evidence.
+
+Inference threshold: an inferred candidate may be generated only when the evidence rule approved in D-06 is met (recommended: at least two discovered emails on the same domain consistent with one pattern). Otherwise the result is Unknown or Not found, never a guessed address.
+
+Result classification
+
+State
+
+Definition
+
+Discovered
+
+Email explicitly found in an accessible public source; source URL recorded.
+
+Inferred
+
+Generated from an identified company pattern; not published. Never presented as discovered.
+
+Unknown
+
+Evidence is insufficient to classify.
+
+Not found
+
+No reliable candidate; the email field is null.
+
+7.6 Optional AI use
+
+AI may help extract job titles or company descriptions from unstructured public text. It must not invent emails, must not declare deliverability, and its output is stored with a method label so it can be distinguished from deterministic extraction. The finder works with AI disabled.
+
+7.7 Company and People Intelligence
+
+Both modules read from the same extraction and source-tracking engine. Company Intelligence fields: name, website, domain, description, industry, public emails, phones, address, contact page, about page, social links, team page. People Intelligence fields: full name, title, company, domain, public profile, public business email, discovery source, verification result. Every field stores its source URL; a field with no evidence is null or Unknown.
+
+7.8 Persistence and scheduling
+
+Each finder run is a FinderJob executed by Celery. Page fetching is sequential per domain within limits. Jobs record status (queued, running, completed, failed, cancelled, access_restricted), counts and error codes. Retries are idempotent due to unique(job_id, url) and unique(job_id, email_normalized).
+
+Part 8: Security and Privacy
+
+8.1 Authentication and authorization
+
+Passwords hashed with Argon2 [Proposed]; password reset via single-use, time-limited tokens; email verification required before use of finder or API [Proposed].
+
+django-axes (or equivalent) for login throttling and lockout [Proposed].
+
+Secure session cookies: Secure, HttpOnly, SameSite; session rotation on login; session listing and revocation in settings.
+
+Optional Google OAuth: only when credentials are configured; never required.
+
+Roles [Proposed]: Visitor (unauthenticated), User, Admin. Additional roles (for example Auditor) are an [Open] item.
+
+Every query is filtered by owner. Object-level permission checks are tested (Part 12).
+
+8.2 Web security
+
+CSRF protection on all state-changing session requests.
+
+XSS: template auto-escaping; no unsafe HTML rendering of crawled content; Content Security Policy and secure headers.
+
+SQL injection: Django ORM and parameterized queries only.
+
+HTTPS only in production with HSTS; secrets from environment variables only.
+
+8.3 SSRF and crawler safety
+
+See Part 7.2. SSRF protection is mandatory on every outbound fetch, including redirects. Crawler identity, robots handling and rate limits are part of abuse prevention toward third-party websites.
+
+8.4 File upload security
+
+Allow only .csv and .xlsx; validate extension, content type and file signature; enforce size and row limits.
+
+Parse with csv and OpenPyXL in data-only mode; never execute formulas or macros; neutralize spreadsheet formula injection in exports (prefix cells starting with =, +, -, @).
+
+Store uploads outside the web root with random names; delete after processing or per retention setting.
+
+8.5 API key protection
+
+See Part 5.2. Keys hashed at rest, shown once, scoped, revocable, never logged.
+
+8.6 Abuse prevention
+
+Per-user and per-key throttling and concurrency limits; job-count caps per user [Open: values].
+
+Probe rate limits per target domain for SMTP and crawling.
+
+Abuse monitoring dashboard for admins; ability to suspend accounts and keys.
+
+Honest capacity messaging: no unlimited-throughput claims.
+
+8.7 Privacy, retention and legal
+
+Collect only business-relevant professional data; avoid unnecessary sensitive personal information.
+
+User-controlled retention and deletion of history; account deletion behavior defined in Part 4.6.
+
+Suppression and opt-out handling through SuppressionEntry; suppressed addresses are excluded from results [Proposed].
+
+The platform does not claim legal compliance. [Validate] privacy and data-protection law (for example in each target jurisdiction), website terms and anti-spam rules require jurisdiction-specific legal review.
+
+Backups are encrypted and access-controlled; deletion requests must account for backup expiry [Validate].
+
+8.8 Admin access and audit
+
+Admins can manage accounts, jobs and system settings. Viewing a user's private records requires a defined, logged authorization process (reason recorded in AuditLog). The exact approval workflow is an [Open] item. All admin actions and security events (login failures, key events, permission denials) are written to AuditLog.
+
+8.9 Monitoring and secrets
+
+Sentry is optional for error monitoring; configure to avoid sending personal data [Validate]. Logs must not contain passwords, full API keys, session tokens or full uploaded content.
+
+Part 9: Rules
+
+9.1 What to use
+
+Django Templates, HTML, CSS, JavaScript for the UI. Django ORM for data access.
+
+Deterministic Python for verification and extraction. Celery for anything slow or external.
+
+The libraries listed as Mandatory in Part 3.6; Optional ones only when their stated need appears.
+
+9.2 What to avoid
+
+React, Next.js or any separate frontend project.
+
+Microservices without a demonstrated requirement.
+
+Mandatory paid verification APIs or private/paid email databases.
+
+Any bypass of login, CAPTCHA or access restrictions.
+
+Unverified claims: 100% accuracy, unlimited throughput, access to private profile data.
+
+Redundant libraries and duplicate modules with overlapping responsibilities.
+
+9.3 Coding conventions [Proposed]
+
+PEP 8; type hints on public functions; docstrings on engine entry points.
+
+Business logic in core/ and app services; views and serializers stay thin.
+
+Settings split: base, development, production. No secrets in code.
+
+Migrations reviewed; no raw SQL unless justified and parameterized.
+
+9.4 AI boundaries [Confirmed]
+
+AI is optional and disabled by default; platform must pass all core tests with AI off.
+
+AI may help structure public page content only.
+
+AI must never decide deliverability, invent emails or replace evidence rules.
+
+AI-derived fields are labeled as such in stored data.
+
+9.5 Error handling, data integrity, development rules
+
+All errors use codes from Part 15; user messages never leak internals.
+
+Jobs are idempotent; writes use transactions; unique constraints enforce deduplication.
+
+Every discovered email stores source and method when available; discovered vs inferred is never mixed.
+
+Every feature has a test and an acceptance criterion before it is considered done.
+
+Implementation follows the phase order in Part 14; avoid unnecessary parallel development.
+
+Never hardcode credentials.
+
+Part 10: UI/UX Specification (Screen by Screen)
+
+10.1 Design system [Proposed]
+
+Brand identity is not defined. Names, colors and logos are proposals only and need approval if used (see D-21 in Part 21).
+
+Token
+
+Proposal
+
+Typography
+
+System sans-serif stack; base 16 px; heading scale ratio 1.25; monospace for emails, domains, reason codes
+
+Colors
+
+Neutral background; one primary color; semantic colors for Deliverable (success), Undeliverable (danger), Risky (warning), Unknown (neutral gray). Each status also has text label and icon
+
+Spacing
+
+4 px base unit; 8/16/24/32 scale
+
+Layout
+
+Public pages: top navbar. Authenticated pages: left sidebar (collapsible) + top bar with user menu; content max width 1200 px
+
+Core components
+
+Navbar, sidebar, card, metric card, data table (sortable, paginated), status badge, reason-code chip, evidence list, source-link, form field with inline validation, file dropzone, stepper, progress bar, modal (confirm), toast, empty-state block, skeleton loader, copy-to-clipboard button
+
+Status badge text
+
+Deliverable, Undeliverable, Risky, Unknown, and for finders: Discovered, Inferred, Not found, Access restricted
+
+Standard copy rule
+
+UI and API copy never says verified, guaranteed or 100%. A short standing note on result pages: Results show technical evidence and are not a delivery guarantee.
+
+10.2 Global behaviors
+
+Loading: skeleton for tables, spinner on buttons (button disabled while submitting to prevent double submit).
+
+Long jobs: show job card with status (queued, running, completed, failed, cancelled), progress, and Refresh; polling every few seconds [Proposed], stops when terminal.
+
+Errors: inline field errors for validation; page-level alert for job or system errors, always with the error code in small text for support.
+
+Empty states: always explain what the page shows and offer the primary action.
+
+Destructive actions (delete history, delete account, revoke key) use a confirmation modal that names the object.
+
+Session expiry: redirect to login with return path; unsaved form data is not preserved [Proposed].
+
+Timestamps displayed in the user's timezone setting; stored UTC.
+
+Internal API calls from the page use fetch with CSRF token; pages work without JavaScript only for static content and forms that post normally [Proposed].
+
+10.3 Screens
+
+Each screen lists route, access, purpose, layout, fields with validation, actions, states, and responsive/accessibility notes. Routes are proposals.
+
+S-01 Landing page
+
+Item
+
+Specification
+
+Route / access
+
+/ | Access: Anyone
+
+Purpose
+
+Explain Find. Verify. Enrich. and drive registration.
+
+Layout
+
+Hero (headline, one-line description, Register and Log in buttons); three engine cards (Find, Verify, Enrich); How it works (3 steps); Honest accuracy note; Free access note; footer with Terms, Privacy, Acceptable Use, API docs.
+
+Fields and validation
+
+None.
+
+Buttons and actions
+
+Register (primary), Log in, View API docs.
+
+States
+
+Static. No dynamic states. Do not show unverifiable counters.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-02 Registration
+
+Item
+
+Specification
+
+Route / access
+
+/register/ | Access: Anonymous only (logged-in users redirected to dashboard)
+
+Purpose
+
+Create an account.
+
+Layout
+
+Centered card: title, form, Google button (only if D-16 approves OAuth), link to login.
+
+Fields and validation
+
+Email (required, valid format, max 254 chars; error: Enter a valid email address / An account with this email may already exist). Password (required, min length per policy [Open: see D-07], not too common, not similar to email; error text names the unmet rule). Confirm password (must match). Terms and Privacy acceptance checkbox (required; error: You must accept to continue) [pending legal pages].
+
+Buttons and actions
+
+Create account (submit), Continue with Google (optional), Log in link.
+
+States
+
+Loading: button spinner. Success: redirect to check-your-email notice (S-03). Error: field-level errors; throttled: Too many attempts, try again later (code RATE_LIMIT_EXCEEDED). Registration response does not reveal whether the email already exists beyond a generic message [Proposed].
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-03 Verify email notice and confirmation
+
+Item
+
+Specification
+
+Route / access
+
+/verify-email/ and /verify-email/<token>/ | Access: Anonymous or logged-in unverified
+
+Purpose
+
+Tell the user to check email and process the link.
+
+Layout
+
+Message card with the address, Resend button, Change email link; confirmation result card.
+
+Fields and validation
+
+Resend: allowed once per cooldown period [Open numeric].
+
+Buttons and actions
+
+Resend verification email, Go to dashboard (after success).
+
+States
+
+Token valid: success and redirect. Token expired or used: error with Resend button. Email delivery failure shown as: We could not send the email. Try again.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-04 Login
+
+Item
+
+Specification
+
+Route / access
+
+/login/ | Access: Anonymous only
+
+Purpose
+
+Authenticate.
+
+Layout
+
+Centered card; links to Forgot password and Register.
+
+Fields and validation
+
+Email (required), Password (required). Single generic error: Email or password is incorrect.
+
+Buttons and actions
+
+Log in, Continue with Google (optional), Forgot password link.
+
+States
+
+Locked out after repeated failures (django-axes): Too many failed attempts. Try again later or reset your password. Unverified account: shows resend link. Inactive/suspended: Your account is unavailable (contact support).
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-05 Forgot and reset password
+
+Item
+
+Specification
+
+Route / access
+
+/password-reset/ and /password-reset/<token>/ | Access: Anonymous
+
+Purpose
+
+Reset password via emailed link.
+
+Layout
+
+Step 1: email field. Step 2: new password and confirm.
+
+Fields and validation
+
+Step 1 email required valid. Step 2 same password rules as registration.
+
+Buttons and actions
+
+Send reset link, Set new password.
+
+States
+
+Step 1 always shows neutral confirmation: If an account exists, a link has been sent. Invalid or expired token: error with link to restart. Success: redirect to login with notice; all other sessions invalidated [Proposed].
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-06 Dashboard
+
+Item
+
+Specification
+
+Route / access
+
+/dashboard/ | Access: User
+
+Purpose
+
+Summarize activity using only stored data.
+
+Layout
+
+Top row metric cards: Emails discovered, Emails verified, Deliverable, Undeliverable, Risky, Unknown, Company searches, Person searches. Second row: Bulk jobs (total, running, completed, failed). Panels: Recent activity (last 10 events), Recent searches, Recent verifications, Processing status (running jobs with progress), Export history (last 5), API activity (requests last period, by key).
+
+Fields and validation
+
+Optional period filter (Last 7 days, 30 days, All time).
+
+Buttons and actions
+
+Each panel links to its full page; New search buttons.
+
+States
+
+Loading skeletons per panel. Empty: all zeros with onboarding prompts to run the first search or verification. Error in one panel shows a retry link for that panel only. Metric definitions are shown in a tooltip (for example Deliverable counts latest status per unique email within the period) [definition requires approval, D-22].
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-07 Company Finder
+
+Item
+
+Specification
+
+Route / access
+
+/finder/company/ | Access: Verified user
+
+Purpose
+
+Find public emails on a company website.
+
+Layout
+
+Form card; below it a job status card; below that results table.
+
+Fields and validation
+
+Company website URL (required; accepts domain or full URL; auto-prepends https; errors: Enter a valid website URL / This URL type is not supported / This address is not allowed). Checkbox Verify discovered emails (default on).
+
+Buttons and actions
+
+Start search, Cancel (while running), Export results, Re-run.
+
+States
+
+Queued/running: progress by pages visited and emails found. Completed with results: table columns Email, Domain, Category, Source URL (link), Method, Verification status, Evidence level, Discovered at. Completed with none: No public emails were found on the pages we were allowed to visit. Restricted: robots or access restrictions listed with page count skipped. Failed: error code and Retry. Results table supports sort, filter by category and status, copy email.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-08 Person Finder (Both-Plus)
+
+Item
+
+Specification
+
+Route / access
+
+/finder/person/ | Access: Verified user
+
+Purpose
+
+Find a person's public business email by profile URL or name and company.
+
+Layout
+
+Two tabs: Profile URL, Name + Company. Results card below with sections Discovered, Inferred, Status.
+
+Fields and validation
+
+Profile URL tab: URL (required, valid). Name + Company tab: Full name (required, 2 to 100 chars), Company name (required), Company website or domain (optional), Public professional URL (optional). Checkbox Verify results.
+
+Buttons and actions
+
+Start search, Cancel, Export.
+
+States
+
+Result card shows person name, title, company, domain, profile URL, then Discovered email (with source link and method) and Inferred candidate (with pattern explanation and a visible Inferred badge; never styled like Discovered). Verification badge per candidate. States: Not found (null): No reliable email was identified. Access restricted: This source does not allow automated access; no data was retrieved (no bypass attempted). Unsupported source: see D-05. Unknown: evidence insufficient.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-09 Single Email Verifier
+
+Item
+
+Specification
+
+Route / access
+
+/verify/ | Access: Verified user
+
+Purpose
+
+Verify one address.
+
+Layout
+
+Form card then result card.
+
+Fields and validation
+
+Email (required; trimmed; error for invalid shows INVALID_SYNTAX result rather than blocking, so users learn the reason).
+
+Buttons and actions
+
+Verify, Copy result, Verify another.
+
+States
+
+Result card: status badge, one-sentence explanation, reason codes with plain-language meaning, evidence checklist (Syntax, Domain, MX, Mailbox-level check performed yes/no with result), flags (role-based, disposable, free provider), evidence level, timestamp, standing limitation note. Unknown shown neutrally with why. Probing unavailable (see D-02) states: Mailbox-level checking is not available; result is based on domain checks only.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-10 Bulk Email Verifier
+
+Item
+
+Specification
+
+Route / access
+
+/verify/bulk/ and /verify/bulk/<job>/ | Access: Verified user
+
+Purpose
+
+Upload a list and verify in the background.
+
+Layout
+
+Stepper: 1 Upload, 2 Choose column and review, 3 Processing, 4 Results. Job history list on the main route.
+
+Fields and validation
+
+File (.csv or .xlsx, size and row limits per D-08; errors: FILE_TOO_LARGE, INVALID_CSV, INVALID_XLSX). Email column selector (auto-suggested; required; error MISSING_EMAIL_COLUMN). Review summary: total, valid, duplicates removed, invalid rows.
+
+Buttons and actions
+
+Upload, Start verification, Pause/Resume (only if D-16 approves), Cancel, Retry failed chunks, Export CSV, Export XLSX, Delete job.
+
+States
+
+Processing: progress bar with counts per status, estimated state text without promised completion times. Completed: status breakdown chart/table and results table. Partially failed: failed chunk count with Retry. Cancelled: partial results retained. Duplicate job warning modal with Continue/Cancel.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-11 Combined Finder and Verifier
+
+Item
+
+Specification
+
+Route / access
+
+/finder/combined/ [or toggle on S-07/S-08 per D-17] | Access: Verified user
+
+Purpose
+
+One flow from discovery through verification.
+
+Layout
+
+Mode selector (Company URL, Person URL, Name + Company) and the matching fields; stepper with four stages: Discovery, Candidate generation, Verification, Final classification.
+
+Fields and validation
+
+Same validation as S-07 or S-08.
+
+Buttons and actions
+
+Start, Cancel, Export.
+
+States
+
+Each stage shows its own status and result count; failure in one stage preserves earlier stage results. Candidate generation stage is labeled Inferred, not proof.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-12 Company Intelligence
+
+Item
+
+Specification
+
+Route / access
+
+/intelligence/companies/ and /<id>/ | Access: Verified user
+
+Purpose
+
+Browse public company facts.
+
+Layout
+
+List with search; detail page with fields (name, website, domain, description, industry, public emails, phones, address, contact page, about page, social links, team page); each field shows source link and captured date.
+
+Fields and validation
+
+Search by name or domain.
+
+Buttons and actions
+
+Open source link, Refresh (re-run finder), Delete record.
+
+States
+
+Field with no evidence shows Unknown (not blank). Empty list: prompt to run a Company Finder search.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-13 People Intelligence
+
+Item
+
+Specification
+
+Route / access
+
+/intelligence/people/ and /<id>/ | Access: Verified user
+
+Purpose
+
+Browse public professional facts.
+
+Layout
+
+List and detail (full name, title, company, domain, profile URL, public business email, source, verification result).
+
+Fields and validation
+
+Search by name or company.
+
+Buttons and actions
+
+Open source, Verify, Delete record.
+
+States
+
+Same Unknown rule. Empty state links to Person Finder.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-14 Search History
+
+Item
+
+Specification
+
+Route / access
+
+/history/searches/ | Access: User
+
+Purpose
+
+Past finder jobs.
+
+Layout
+
+Filter bar (type, status, date), table (Date, Type, Input, Status, Result count), detail drawer or page.
+
+Fields and validation
+
+Filters only.
+
+Buttons and actions
+
+View, Re-run, Export, Delete one, Delete selected.
+
+States
+
+Empty: No searches yet. Deleted items vanish with a toast and cannot be recovered [Proposed].
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-15 Verification History
+
+Item
+
+Specification
+
+Route / access
+
+/history/verifications/ | Access: User
+
+Purpose
+
+Past single and bulk verifications.
+
+Layout
+
+Tabs Single and Bulk; table with filters by status and reason code.
+
+Fields and validation
+
+Filters only.
+
+Buttons and actions
+
+View detail, Re-verify, Export, Delete.
+
+States
+
+Empty and error states as S-14.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-16 Reports and Exports
+
+Item
+
+Specification
+
+Route / access
+
+/reports/ | Access: User
+
+Purpose
+
+Create and download exports.
+
+Layout
+
+Export list (Date, Source, Format, Size, Expires, Download) and Create export panel.
+
+Fields and validation
+
+Source (a job or a history range), Format (CSV or XLSX).
+
+Buttons and actions
+
+Create export, Download, Delete.
+
+States
+
+Export building: status chip. Failed: STORAGE_FAILURE with Retry. Expired: download disabled with message.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-17 API Management
+
+Item
+
+Specification
+
+Route / access
+
+/api-keys/ | Access: Verified user
+
+Purpose
+
+Manage keys and see usage.
+
+Layout
+
+Keys table (Name, Prefix, Scopes, Status, Created, Last used); Create key button; usage panel; request log table.
+
+Fields and validation
+
+Key name (required, 1 to 60 chars), Scopes (at least one).
+
+Buttons and actions
+
+Create key, Revoke, Regenerate, View usage, View request log.
+
+States
+
+After creation, modal shows full key once with Copy and warning: This key will not be shown again. Revoke needs confirmation. Request log shows method, path, status, time only (no bodies).
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-18 API Documentation
+
+Item
+
+Specification
+
+Route / access
+
+/api/docs/ | Access: Anyone [Open: or logged-in only]
+
+Purpose
+
+Show public API docs.
+
+Layout
+
+Generated OpenAPI documentation (drf-spectacular) with auth section, examples, error codes.
+
+Fields and validation
+
+None.
+
+Buttons and actions
+
+Try-it is not required [Proposed].
+
+States
+
+Static. Version selector when v2 exists.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-19 Profile and Settings
+
+Item
+
+Specification
+
+Route / access
+
+/settings/ | Access: User
+
+Purpose
+
+Manage account.
+
+Layout
+
+Sections: Profile, Password, Sessions, Data retention, Danger zone.
+
+Fields and validation
+
+Display name (max 80), Timezone (select), Retention days (within approved bounds, D-09), Current and new password.
+
+Buttons and actions
+
+Save, Change password, Sign out other sessions, Delete account.
+
+States
+
+Delete account requires typing the account email and confirms what will be deleted; active jobs are cancelled first. Success toast on save.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-20 Admin Dashboard
+
+Item
+
+Specification
+
+Route / access
+
+/admin-panel/ | Access: Admin only (403 otherwise)
+
+Purpose
+
+Operate and monitor the platform.
+
+Layout
+
+Tabs: Overview, Users, Jobs, Workers and queues, Failed tasks, Health (database, Redis, storage), Abuse, Security and audit logs, Configuration.
+
+Fields and validation
+
+Search users, filters on jobs, config values (validated).
+
+Buttons and actions
+
+Suspend/unsuspend user, change role, revoke key, cancel job, retry failed task, view audit log. Viewing a user's private record contents needs a reason entry (D-12) written to AuditLog.
+
+States
+
+Empty and error states per tab. Every mutation shows confirmation and records an audit entry.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-21 Legal pages (Terms, Privacy, Acceptable Use)
+
+Item
+
+Specification
+
+Route / access
+
+/terms/, /privacy/, /acceptable-use/ | Access: Anyone
+
+Purpose
+
+Required for a public service; content must come from legal review.
+
+Layout
+
+Standard document layout with last-updated date.
+
+Fields and validation
+
+None.
+
+Buttons and actions
+
+Links in footer and registration.
+
+States
+
+Placeholder content must not ship to production.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-22 Opt-out / suppression request [pending D-14]
+
+Item
+
+Specification
+
+Route / access
+
+/opt-out/ | Access: Anyone
+
+Purpose
+
+Let third parties request that an address or domain not be shown or processed.
+
+Layout
+
+Short form.
+
+Fields and validation
+
+Email or domain (required, valid), Confirmation via emailed link, Optional note.
+
+Buttons and actions
+
+Submit request.
+
+States
+
+Success: confirmation message. Entry stored in SuppressionEntry after confirmation.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+S-23 Error pages
+
+Item
+
+Specification
+
+Route / access
+
+/403, /404, /429, /500 | Access: Anyone
+
+Purpose
+
+Consistent error pages.
+
+Layout
+
+Message, error code, link to dashboard or home.
+
+Fields and validation
+
+None.
+
+Buttons and actions
+
+Back to home.
+
+States
+
+429 shows retry-after seconds when available.
+
+Responsive and accessibility
+
+Single column below 640 px; labels above inputs; visible focus ring; every input has a label; errors announced via aria-live; status never conveyed by color alone.
+
+10.4 Navigation map
+
+Area
+
+Items
+
+Public
+
+Landing, Register, Login, Forgot password, API docs, Legal pages, Opt-out
+
+Sidebar (user)
+
+Dashboard; Find (Company, Person); Verify (Single, Bulk); Combined; Intelligence (Companies, People); History (Searches, Verifications); Reports; API; Settings
+
+Sidebar (admin)
+
+Admin panel (admin role only)
+
+Part 11: Workflows
+
+For each workflow: input, validation, processing, modules, database operations, background tasks, output, errors, recovery, security. Sequence diagrams are provided as Mermaid source for key flows.
+
+11.1 Registration and login
+
+Item
+
+Detail
+
+Input / validation
+
+Email, password; email format, uniqueness, password rules
+
+Processing
+
+Create User (inactive until email verified; see D-07), send verification email, verify token, login creates session
+
+Modules / DB
+
+accounts; User, UserProfile, AuditLog
+
+Background
+
+Verification email sending (Celery)
+
+Errors / recovery
+
+Email send failure: resend option; token expired: request new
+
+Security
+
+Argon2, throttling, CSRF, generic messages for reset
+
+11.2 Company email discovery
+
+Item
+
+Detail
+
+Input / validation
+
+Company URL; syntax, normalization, SSRF checks
+
+Processing
+
+Part 7.4 pipeline
+
+Modules / DB
+
+email_finder, core.finder_engine; FinderJob, CrawlPage, DiscoveredEmail, optional EmailVerification
+
+Background
+
+Celery crawl task; per-email verification tasks
+
+Output
+
+Results table with source and evidence
+
+Errors / recovery
+
+Unreachable, timeout, restricted: job completes with partial or empty results and error code; retries idempotent
+
+Security
+
+Owner check; SSRF; robots; limits
+
+11.3 Person URL discovery (Method A)
+
+Item
+
+Detail
+
+Input / validation
+
+Profile URL; syntax, normalization, source-type check against the approved list (D-05), SSRF checks
+
+Processing
+
+Part 7.5 Method A: robots and access check, retrieve permitted content only, extract name, title, company, domain, search public company pages for a disclosed email, verify if found
+
+Modules / DB
+
+email_finder, core.finder_engine; FinderJob, CrawlPage, Person, Company, DiscoveredEmail, EmailVerification
+
+Background
+
+Celery finder task; verification task
+
+Output
+
+Structured person result with Discovered, Inferred (only if threshold met) and Not found states
+
+Errors / recovery
+
+UNSUPPORTED_URL, ACCESS_RESTRICTED (no bypass), CAPTCHA_ENCOUNTERED (skip), SITE_UNREACHABLE; job completes with the code and any partial data
+
+Security
+
+Owner check; SSRF; robots; no credentials; suppression filter
+
+11.4 Person name + company discovery (Method B)
+
+Item
+
+Detail
+
+Input / validation
+
+Full name, company name, optional domain and profile URL; length and character checks
+
+Processing
+
+Part 7.5 Method B: identify domain, search public company pages, extract matches, analyze pattern only above threshold (D-06), optionally create inferred candidate labeled Inferred, verify candidates independently
+
+Modules / DB
+
+Same as 11.3
+
+Background
+
+Celery finder task and verification tasks
+
+Output
+
+Discovered email with source, or Inferred candidate with pattern explanation, or Not found (null)
+
+Errors / recovery
+
+As 11.3 plus insufficient evidence returning Unknown
+
+Security
+
+As 11.3
+
+11.5 Single email verification
+
+Input: email. Validate syntax; run pipeline (Part 6); store EmailVerification and DomainRecord; return result. SMTP step may run in a worker with a wait-for-result timeout, returning Unknown if exceeded [Proposed].
+
+11.6 Bulk verification
+
+sequenceDiagram
+
+  participant U as User
+
+  participant W as Web/API
+
+  participant DB as PostgreSQL
+
+  participant Q as Redis/Celery
+
+  participant K as Worker
+
+  U->>W: Upload CSV/XLSX
+
+  W->>W: Validate file, detect columns
+
+  U->>W: Choose email column
+
+  W->>DB: Create BulkJob, BulkRecords (normalized, deduplicated), BulkChunks
+
+  W->>Q: Enqueue chunk tasks
+
+  W-->>U: Job id
+
+  K->>DB: Claim chunk (conditional update)
+
+  K->>K: Verify records
+
+  K->>DB: Save results + mark chunk done (one transaction)
+
+  U->>W: Poll progress
+
+  U->>W: Export CSV/XLSX
+
+Pause/resume: supported by not enqueuing new chunks while paused [Proposed; confirm practicality]. Cancel: stops enqueueing and marks pending chunks cancelled.
+
+Worker crash: chunks left running beyond a timeout are returned to queued by a Celery Beat sweeper; processing skips records already in a final state.
+
+Duplicate job submission: detected by file hash plus column per owner; user is warned (DUPLICATE_BULK_JOB) and may proceed [Proposed].
+
+11.7 Combined finder and verifier
+
+Item
+
+Detail
+
+Input / validation
+
+Mode (company URL, person URL, name + company) and that mode's validated fields
+
+Processing
+
+Stage 1 Discovery (public pages only); Stage 2 Candidate generation (inferred candidates, labeled, never proof); Stage 3 Verification (each candidate verified independently); Stage 4 Final classification (discovered/inferred/unknown/not found plus verification status)
+
+Modules / DB
+
+email_finder orchestration service; FinderJob (stage and status fields), DiscoveredEmail, EmailVerification
+
+Background
+
+Chain of Celery tasks, one per stage; each stage persists its output before the next starts
+
+Output
+
+Combined result table with origin, source, method, verification status, evidence level
+
+Errors / recovery
+
+A failed stage marks that stage failed and keeps earlier results; user can retry from the failed stage
+
+Security
+
+Same checks as the finder and verifier; ownership applied at every stage
+
+11.8 API key creation and authentication
+
+User opens API Management and names a key and scopes.
+
+Server generates random key, stores prefix and hash, shows full key once, writes AuditLog.
+
+Client sends Authorization: Api-Key header.
+
+Server looks up by prefix, compares hash in constant time, checks status and scope, applies throttling, records usage.
+
+Revoked or invalid keys return 401 and are logged.
+
+11.9 API bulk processing
+
+Same as 11.6 but created via POST /api/v1/email/verify/bulk; returns 202 and job id; results via /jobs/{id}/results; Idempotency-Key prevents duplicate jobs.
+
+11.10 Search history and report export
+
+User selects records; export task builds CSV or XLSX; file saved to storage; ExportRecord created; download link authorized by owner check and expiry.
+
+11.11 Admin job monitoring
+
+Admin views job and worker status. Access to a specific user's record contents requires the audited process in Part 8.8.
+
+11.12 Failed task recovery
+
+Task fails: retry with exponential backoff up to a limit; error code stored.
+
+Retries exhausted: job marked failed or partially completed with failed chunks listed; user can retry failed chunks.
+
+Redis unavailable: new jobs are rejected with SERVICE_UNAVAILABLE; running state is in PostgreSQL, so jobs resume when the broker returns.
+
+Database unavailable: requests fail with SERVICE_UNAVAILABLE; workers retry connections; no result is acknowledged before commit.
+
+Part 12: Testing and QA
+
+12.1 Strategy
+
+Level
+
+Scope
+
+Tools
+
+Unit
+
+Normalization, syntax, rules engine, extraction, classification, SSRF guard
+
+pytest, factory-boy
+
+Integration
+
+Views, DRF endpoints, ORM, Celery tasks (eager and with real broker)
+
+pytest-django
+
+API
+
+Auth, scopes, validation, pagination, idempotency, errors
+
+pytest + httpx or DRF test client
+
+Security
+
+SSRF, permission isolation, upload abuse, XSS, CSRF
+
+pytest, Bandit, pip-audit
+
+SMTP
+
+Controlled local fake SMTP servers simulating accept, reject, 4xx, timeout, catch-all
+
+Local test server
+
+Crawler
+
+Local test HTTP site with robots, redirects, large pages
+
+Local test server
+
+Load
+
+Throughput and queue behavior at realistic sizes
+
+Locust
+
+Deployment
+
+Container build, migrations, health checks, smoke tests
+
+CI pipeline
+
+Verification tests never send real mail to real recipients and never probe third-party mail servers in CI.
+
+12.2 Sample test cases
+
+Case
+
+Input
+
+Expected
+
+Invalid syntax
+
+a@@b
+
+Undeliverable, INVALID_SYNTAX
+
+IDN domain
+
+user@bücher.example
+
+Normalized to ASCII domain; processed
+
+No MX
+
+Test DNS fixture with no MX and no address
+
+Undeliverable, NO_MX_RECORDS
+
+SMTP accept, non-catch-all
+
+Fake server accepts target, rejects random
+
+Deliverable, SMTP_ACCEPTED
+
+Catch-all
+
+Fake server accepts all
+
+Risky, CATCH_ALL_DOMAIN
+
+Timeout
+
+Fake server never replies
+
+Unknown, SMTP_TIMEOUT
+
+SSRF direct
+
+URL to 127.0.0.1 or 169.254.169.254
+
+Blocked, UNSAFE_TARGET
+
+SSRF redirect
+
+Public URL redirecting to private IP
+
+Blocked at redirect hop
+
+Robots disallow
+
+Page disallowed
+
+Page skipped, recorded robots_allowed = false
+
+Both-Plus labeling
+
+Pattern-based candidate
+
+origin = inferred, never discovered
+
+No email found
+
+Site without emails
+
+Empty result, job completed
+
+Ownership
+
+User A requests User B's job id
+
+404
+
+Bulk idempotency
+
+Retry same chunk twice
+
+No duplicate results
+
+API key
+
+Revoked key
+
+401 API_AUTH_FAILED
+
+Rate limit
+
+Exceed throttle
+
+429 with Retry-After
+
+Upload
+
+XLSX with formula or oversized file
+
+Formula neutralized or rejection with FILE_TOO_LARGE
+
+12.3 Acceptance criteria by module
+
+Module
+
+Acceptance criteria
+
+Authentication
+
+Registration, verification, login, reset, logout, session revocation, deletion work; throttling active; permissions tested
+
+Dashboard
+
+Every metric traceable to stored data; no invented metrics
+
+Company Finder
+
+Safe crawl within limits; emails with source and method; empty result when none; SSRF tests pass
+
+Person Finder
+
+Both methods work; discovered and inferred labeled; restricted access reported not bypassed; null when unreliable
+
+Single Verifier
+
+All rules in Part 6.4 pass tests; Unknown used for inconclusive; no guarantee language in UI/API
+
+Bulk
+
+Validation, column selection, dedupe, chunking, progress, cancel, retry, crash recovery without duplicate results, CSV/XLSX export
+
+Combined
+
+Stages separated; failure in a stage preserves prior stages
+
+APIs
+
+Documented schemas match behavior; auth, scopes, throttling, idempotency verified
+
+History/Reports
+
+Owner-only access; retention and deletion work
+
+Admin
+
+Admin-only; audit entries for sensitive actions
+
+Part 13: Deployment and DevOps
+
+13.1 Environments
+
+Environment
+
+Purpose
+
+Notes
+
+Development
+
+Local work
+
+Docker Compose; debug on; fake SMTP and local test sites
+
+Staging
+
+Pre-release verification
+
+Production-like configuration; non-production data
+
+Production
+
+Live service
+
+Debug off; HTTPS; monitoring; backups
+
+13.2 Local setup outline
+
+Clone repository; copy .env.example to .env and fill placeholders.
+
+docker compose up to start PostgreSQL, Redis, web, worker, beat.
+
+Run migrations; create a superuser.
+
+Run pytest.
+
+13.3 Services [Proposed]
+
+Service
+
+Role
+
+web
+
+Django under Gunicorn
+
+worker
+
+Celery worker (separate queues for crawl and verification may be added later)
+
+beat
+
+Celery Beat scheduler
+
+probe-worker [Proposed, D-02]
+
+Celery worker on a host that permits outbound port 25; consumes only the smtp_probe queue
+
+postgres
+
+Database
+
+redis
+
+Broker and cache
+
+nginx
+
+Reverse proxy and static files in production
+
+13.4 .env.example specification (names only, no real values)
+
+DJANGO_SETTINGS_MODULE=config.settings.development
+
+DJANGO_SECRET_KEY=change-me
+
+DJANGO_ALLOWED_HOSTS=localhost
+
+DATABASE_URL=postgres://user:password@postgres:5432/dbname
+
+REDIS_URL=redis://redis:6379/0
+
+CELERY_BROKER_URL=redis://redis:6379/0
+
+EMAIL_HOST= / EMAIL_PORT= / EMAIL_HOST_USER= / EMAIL_HOST_PASSWORD=
+
+DEFAULT_FROM_EMAIL=
+
+SMTP_PROBE_HELO_HOSTNAME=
+
+SMTP_PROBE_MAIL_FROM=
+
+STORAGE_BACKEND=local   # or s3
+
+AWS_S3_BUCKET= / AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY=   # optional
+
+GOOGLE_OAUTH_CLIENT_ID= / GOOGLE_OAUTH_CLIENT_SECRET=         # optional
+
+SENTRY_DSN=                                                  # optional
+
+AI_ENABLED=false
+
+AI_PROVIDER_API_KEY=                                         # optional
+
+13.5 Production topics
+
+Static files collected and served by Nginx; media/exports in object storage when used.
+
+HTTPS with valid certificates; domain and DNS configured; Cloudflare optional.
+
+Database migrations run as a controlled release step; backups scheduled and restore-tested.
+
+Logging to stdout and aggregated; error reporting optional via Sentry; uptime monitoring.
+
+Hosting: the master prompt names Railway or Render for initial deployment and AWS or DigitalOcean for production. Validation (Part 22.2) found that Render, Railway (Hobby plan) and DigitalOcean restrict outbound SMTP ports, which blocks mailbox probing and possibly SMTP-based account email. Web and worker services can still run there; mailbox probing needs a probe host that confirms outbound port 25 in writing (D-02, D-03). Pricing and regions are not asserted.
+
+13.6 CI/CD and rollback [Proposed]
+
+On pull request: lint, pytest, Bandit, pip-audit.
+
+On merge: build image, run migrations on staging, smoke test.
+
+Production deploy: tagged release, migrate, rolling restart.
+
+Rollback: redeploy previous image; migrations designed backward-compatible so rollback does not require destructive reversal.
+
+Part 14: Development Phases (Revised)
+
+Revision summary: a Phase 0 approval gate was added; suppression handling moved earlier (Phase 5) because finder results must honor it; transactional email setup moved into Phase 2 where it is first needed; an SMTP capability spike was added as the first task of Phase 3 because hosting may not permit mailbox probing; the account-deletion cascade is specified in Phase 2 and extended in each later phase. Order is strict; no parallel phase work.
+
+Phase 0: Decision Gate (no code)
+
+Item
+
+Detail
+
+Objective
+
+Resolve blocking decisions in Part 21.
+
+Work
+
+Owner answers decisions marked Blocks Phase 1 to 3 (D-01 to D-05, D-07, D-08, D-20). Update this document to v0.3.0 with the answers.
+
+Acceptance
+
+Every decision blocking the next phase is Approved or explicitly Deferred, recorded in the changelog.
+
+Phase 1: Project Foundation and Environment Setup
+
+Item
+
+Detail
+
+Objective
+
+Runnable skeleton with quality gates.
+
+Features / modules
+
+Repository, settings split (base, development, production), Docker Compose (web, worker, beat, postgres, redis), Celery wiring, base template and design tokens, health endpoint, logging, pre-commit and CI skeleton (lint, pytest, Bandit, pip-audit).
+
+Files
+
+manage.py, config/*, requirements (pinned), .env.example, Dockerfile, docker-compose.yml, templates/base.html, static/css tokens, tests/ skeleton, docs/ copy of this specification.
+
+DB / API
+
+No domain models. Health endpoint only.
+
+Testing
+
+CI green; app boots in containers; settings load from environment; no secret in repo.
+
+Acceptance
+
+All CI gates pass on an empty feature set; version pins recorded and checked against Django 5.2 and chosen Python.
+
+Depends on
+
+Phase 0
+
+Phase 2: Authentication, User Management, Dashboard
+
+Item
+
+Detail
+
+Objective
+
+Secure accounts and dashboard shell.
+
+Features
+
+Registration, email verification, login, logout, password reset, sessions, profile and settings, roles (User, Admin), account deletion with cascade rules, transactional email service (provider per D-04), Google OAuth only if approved (D-16), AuditLog, dashboard reading real aggregates.
+
+Apps / files
+
+accounts, dashboard, audit, core/security, notifications service module.
+
+DB
+
+User, UserProfile, AuditLog.
+
+API
+
+Internal auth endpoints and dashboard summary.
+
+Testing
+
+Auth flow tests, throttling and lockout, permission isolation, deletion cascade, email service with a fake backend, dashboard metric definitions tested against fixtures.
+
+Acceptance
+
+S-01 to S-06, S-19, S-21, S-23 meet Part 10; metrics traceable to stored data (D-22).
+
+Depends on
+
+Phase 1; D-04, D-07, D-09, D-13, D-15, D-16, D-21, D-22 answered
+
+Phase 3: Single Email Verification Engine
+
+Item
+
+Detail
+
+Objective
+
+Deterministic, evidence-based verification.
+
+First task: SMTP capability spike
+
+On the intended production host, test whether outbound port 25 connections to a controlled test mail server and to a public MX are permitted; record result. If not permitted, follow the decision taken in D-02 before building probing.
+
+Features
+
+Normalization, syntax, IDN, DNS, MX, disposable, free, role-based flags, optional SMTP probe, catch-all probe, decision rules (Part 6.4), caching, reason codes, evidence object.
+
+Apps / files
+
+email_verifier, core/email_engine (checks, rules, smtp client, data lists), single verifier page.
+
+DB
+
+DomainRecord, EmailVerification.
+
+API
+
+Internal verify endpoint.
+
+Testing
+
+Rule table fully covered by unit tests; local fake SMTP server scenarios (accept, reject, 4xx, timeout, catch-all, policy block); DNS fixtures; no third-party probing in CI.
+
+Acceptance
+
+S-09 meets Part 10; every rule in 6.4 has a passing test; wording contains no guarantee claims.
+
+Depends on
+
+Phase 2; D-02, D-03, D-10, D-11, D-20
+
+Phase 4: Bulk Email Verification
+
+Item
+
+Detail
+
+Objective
+
+Reliable background processing of lists.
+
+Features
+
+Upload validation, column detection, normalization, dedupe, job creation, chunking, Celery tasks, progress, cancel, retry of failed chunks, crash sweeper, CSV/XLSX export, formula-injection protection. Pause/resume only if approved (D-16).
+
+Apps / files
+
+bulk_processing, history_reports (exports), core/storage.
+
+DB
+
+BulkJob, BulkChunk, BulkRecord, ExportRecord.
+
+API
+
+Internal bulk endpoints.
+
+Testing
+
+Parsing edge cases, duplicate retry idempotency, simulated worker crash, Redis outage handling, large file rejection, export correctness.
+
+Acceptance
+
+S-10, S-16 meet Part 10; no duplicate results after retry or crash; limits from D-08 enforced.
+
+Depends on
+
+Phase 3; D-08
+
+Phase 5: Company Email Finder
+
+Item
+
+Detail
+
+Objective
+
+Safe public-page crawling and extraction.
+
+Features
+
+SSRF guard, redirect validation, robots handling, limits, page prioritization, extraction, normalization, dedupe, categories, source tracking, optional verification, suppression filtering.
+
+Apps / files
+
+email_finder, core/finder_engine, core/security (SSRF), SuppressionEntry handling.
+
+DB
+
+FinderJob, CrawlPage, DiscoveredEmail, Company, SuppressionEntry.
+
+API
+
+Internal company finder endpoints.
+
+Testing
+
+SSRF suite (direct, redirect, DNS rebinding simulation, metadata address, IPv6), robots, size and time limits, local test site, extraction fixtures, suppression.
+
+Acceptance
+
+S-07 meets Part 10; all SSRF tests pass; empty result handled; each email has source and method.
+
+Depends on
+
+Phase 3 (verification) and Phase 4 (job and export patterns); D-08, D-14
+
+Phase 6: Person Finder (Both-Plus)
+
+Item
+
+Detail
+
+Objective
+
+Both person search methods with strict labeling.
+
+Features
+
+Profile URL method restricted to approved source types (D-05), name + company method, pattern analysis only above the approved evidence threshold (D-06), discovered vs inferred separation, access-restricted handling.
+
+Apps / files
+
+email_finder (person module), Person model.
+
+DB
+
+Person; links from DiscoveredEmail.
+
+API
+
+Internal person finder endpoints.
+
+Testing
+
+Labeling tests (inferred is never shown as discovered), not-found returns null, restricted-source behavior, pattern threshold tests.
+
+Acceptance
+
+S-08 meets Part 10; no restricted-source fetch occurs.
+
+Depends on
+
+Phase 5; D-05, D-06
+
+Phase 7: Company and People Intelligence
+
+Item
+
+Detail
+
+Objective
+
+Source-tracked public facts.
+
+Features
+
+Field extraction for company and person facts with per-field source; intelligence pages (or merged views per D-17).
+
+Apps / files
+
+intelligence app (proposed merge of company and people).
+
+DB
+
+Company and Person field extensions with source references.
+
+API
+
+Internal read endpoints.
+
+Testing
+
+Every stored field has a source or is null; no invented values; optional AI path off by default and tested off.
+
+Acceptance
+
+S-12, S-13 meet Part 10.
+
+Depends on
+
+Phases 5, 6
+
+Phase 8: Combined Finder and Verifier
+
+Item
+
+Detail
+
+Objective
+
+Orchestrated staged workflow.
+
+Features
+
+Stage runner (Discovery, Candidates, Verification, Classification) with per-stage persistence.
+
+Apps / files
+
+email_finder orchestration service; S-11 or toggles per D-17.
+
+DB
+
+No new tables expected.
+
+API
+
+Internal combined endpoint.
+
+Testing
+
+Failure injection per stage preserves earlier results; candidates never labeled as proof.
+
+Acceptance
+
+S-11 behavior verified.
+
+Depends on
+
+Phases 3, 5, 6
+
+Phase 9: Internal and Public APIs
+
+Item
+
+Detail
+
+Objective
+
+Programmatic access with safe key handling.
+
+Features
+
+API key lifecycle, scopes, hashed storage, throttling via DRF and Redis, idempotency keys, cursor pagination, usage and request logging, OpenAPI docs, public endpoints in Part 5.
+
+Apps / files
+
+api_management, public API module under /api/v1/.
+
+DB
+
+APIKey, UsageRecord, APIRequestLog.
+
+API
+
+All public endpoints; request/response schemas in Part 5.
+
+Testing
+
+Auth, scope, revoked key, throttling, idempotency, schema conformance tests against generated OpenAPI, secrets never in responses or logs.
+
+Acceptance
+
+S-17, S-18 meet Part 10; docs match behavior.
+
+Depends on
+
+Phases 3 to 8; numeric API limits approved (D-08)
+
+Phase 10: History, Reports, Retention, Admin Operations
+
+Item
+
+Detail
+
+Objective
+
+User control and operability.
+
+Features
+
+History pages, report export finalization, retention jobs (Celery Beat), deletion, admin panel, worker and queue monitoring, abuse tools, audited private-data access.
+
+Apps / files
+
+history_reports, admin_management.
+
+DB
+
+Retention fields and cleanup jobs; no new core models expected.
+
+API
+
+Internal admin and history endpoints.
+
+Testing
+
+Owner-only access, retention deletion correctness, admin authorization and audit entries, stale job sweeper.
+
+Acceptance
+
+S-14, S-15, S-16, S-20 meet Part 10; D-09 and D-12 implemented as approved.
+
+Depends on
+
+Phase 9; D-09, D-12
+
+Phase 11: Security, Testing, Optimization
+
+Item
+
+Detail
+
+Objective
+
+Hardening before launch.
+
+Features
+
+Security review against Part 22.4, CSP and headers, dependency audit, load tests, query optimization, abuse tuning.
+
+Testing
+
+Bandit and pip-audit clean or documented exceptions; Locust results recorded; penetration-style tests of SSRF and permissions.
+
+Acceptance
+
+No unresolved high-severity finding; load results recorded against approved limits.
+
+Depends on
+
+Phase 10
+
+Phase 12: Deployment, Monitoring, Maintenance
+
+Item
+
+Detail
+
+Objective
+
+Go-live readiness.
+
+Features
+
+Production configuration, domain and HTTPS, backups with restore test, monitoring and alerts, runbooks, rollback rehearsal, legal pages finalized by reviewers.
+
+Acceptance
+
+Staging and production deploys succeed; restore test passed; alerts verified; legal pages approved (D-15).
+
+Depends on
+
+Phase 11
+
+Part 15: Error Handling
+
+15.1 Principles
+
+Every error has a stable code, a user-safe message, an internal log entry, and a retry/job behavior.
+
+User messages never expose stack traces, hostnames, internal IPs or secrets.
+
+Job behavior: Continue (skip item), Pause, or Fail.
+
+15.2 Error taxonomy
+
+Code
+
+Meaning and user message
+
+Retry
+
+Job behavior
+
+INVALID_EMAIL
+
+Email is not valid.
+
+No
+
+Continue (record as Undeliverable)
+
+INVALID_URL
+
+The URL is not valid.
+
+No
+
+Fail request
+
+UNSUPPORTED_URL
+
+This URL type is not supported.
+
+No
+
+Fail request
+
+SITE_UNREACHABLE
+
+The website could not be reached.
+
+Yes, limited
+
+Fail job after retries
+
+DNS_FAILURE
+
+Domain could not be resolved.
+
+Yes if temporary
+
+Continue / Unknown
+
+NO_MX_RECORDS
+
+Domain has no mail route.
+
+No
+
+Continue (Undeliverable)
+
+SMTP_TIMEOUT
+
+Mail server did not respond in time.
+
+Yes
+
+Continue (Unknown)
+
+SMTP_REJECTION
+
+Mail server rejected the recipient.
+
+No
+
+Continue (Undeliverable)
+
+CATCH_ALL_DOMAIN
+
+Domain accepts all addresses.
+
+No
+
+Continue (Risky)
+
+DISPOSABLE_ADDRESS
+
+Disposable provider detected.
+
+No
+
+Continue (Risky)
+
+DUPLICATE_EMAIL
+
+Duplicate removed.
+
+No
+
+Continue
+
+NO_EMAIL_FOUND
+
+No public emails found.
+
+No
+
+Complete with empty result
+
+ACCESS_RESTRICTED
+
+Access to this page is restricted; it was not accessed.
+
+No
+
+Complete or fail with this code
+
+CAPTCHA_ENCOUNTERED
+
+Page requires a CAPTCHA; skipped.
+
+No
+
+Continue
+
+CRAWL_TIMEOUT
+
+Crawl exceeded its time budget.
+
+Yes, limited
+
+Complete with partial results
+
+UNSAFE_TARGET
+
+Target is not allowed.
+
+No
+
+Fail request (also on unsafe redirect)
+
+FILE_TOO_LARGE
+
+File exceeds the size limit.
+
+No
+
+Reject upload
+
+INVALID_CSV / INVALID_XLSX
+
+File could not be read.
+
+No
+
+Reject upload
+
+MISSING_EMAIL_COLUMN
+
+No email column selected or detected.
+
+No
+
+Await user input
+
+DUPLICATE_BULK_JOB
+
+An identical job already exists.
+
+No
+
+Warn; user decides
+
+WORKER_CRASH
+
+Processing was interrupted; it will resume.
+
+Yes
+
+Re-queue chunk
+
+REDIS_UNAVAILABLE
+
+Service temporarily unavailable.
+
+Yes
+
+Reject new jobs; running jobs resume later
+
+DATABASE_UNAVAILABLE
+
+Service temporarily unavailable.
+
+Yes
+
+Fail request; workers retry
+
+API_AUTH_FAILED
+
+Authentication failed.
+
+No
+
+Reject request
+
+RATE_LIMIT_EXCEEDED
+
+Too many requests.
+
+Yes after Retry-After
+
+Reject request
+
+VALIDATION_ERROR
+
+Request data is invalid; message names the field.
+
+No
+
+Reject request
+
+FORBIDDEN_SCOPE
+
+Your API key cannot perform this action.
+
+No
+
+Reject request
+
+NOT_FOUND
+
+Resource not found (also returned for resources owned by others).
+
+No
+
+Reject request
+
+IDEMPOTENCY_CONFLICT
+
+Same Idempotency-Key used with a different request.
+
+No
+
+Reject request
+
+SERVICE_UNAVAILABLE
+
+Service temporarily unavailable.
+
+Yes
+
+Reject request
+
+PROBE_UNAVAILABLE
+
+Mailbox-level checking is not available; domain checks only.
+
+No
+
+Continue (Unknown)
+
+EMAIL_NOT_VERIFIED
+
+Verify your account email to use this feature.
+
+No
+
+Reject request
+
+SUPPRESSED_ADDRESS
+
+This address is excluded from results on request.
+
+No
+
+Continue (omit)
+
+JOB_CANCELLED
+
+The job was cancelled.
+
+No
+
+Terminal state
+
+STORAGE_FAILURE
+
+File storage failed.
+
+Yes
+
+Pause/fail export; user may retry
+
+Logging: every error logs code, request or job id, owner id and timing; never secrets or full file contents.
+
+15.3 Verification reason codes (not errors)
+
+These codes appear in verification results. They are defined once as constants and reused in the API, UI and exports.
+
+Code
+
+Meaning
+
+INVALID_SYNTAX
+
+Address is not well-formed
+
+DOMAIN_NOT_FOUND
+
+Domain does not exist in DNS
+
+NO_MX_RECORDS
+
+No mail route (null MX, or no MX and no address record)
+
+DNS_TEMPORARY_FAILURE
+
+DNS timeout or server failure
+
+INSUFFICIENT_EVIDENCE
+
+Not enough evidence to decide
+
+SMTP_TIMEOUT
+
+Mail server did not answer in time
+
+SMTP_REJECTION
+
+Recipient rejected as nonexistent
+
+PROVIDER_BLOCKED_PROBING
+
+Server refused probing for policy reasons
+
+TEMPORARY_SERVER_FAILURE
+
+Persistent temporary (4xx) response
+
+GREYLISTED
+
+Temporary deferral typical of greylisting
+
+CATCH_ALL_DOMAIN
+
+Domain accepts arbitrary recipients
+
+CATCH_ALL_NOT_DETERMINED
+
+Catch-all test inconclusive
+
+SMTP_ACCEPTED
+
+Recipient accepted and catch-all probe rejected
+
+DISPOSABLE_ADDRESS
+
+Disposable provider
+
+ROLE_BASED_ADDRESS
+
+Role-based local part (flag)
+
+FREE_PROVIDER
+
+Free mailbox provider (flag)
+
+PROBE_UNAVAILABLE
+
+Host cannot perform mailbox-level checks (note)
+
+Part 16: Integrations and Credentials
+
+Category
+
+Item
+
+Required?
+
+Notes
+
+1. Mandatory infrastructure
+
+PostgreSQL credentials
+
+Yes
+
+1. Mandatory infrastructure
+
+Redis connection
+
+Yes
+
+1. Mandatory infrastructure
+
+Transactional email provider (HTTP API or SMTP) for verification and reset emails
+
+Yes (for account emails)
+
+Choose per D-04. Several hosts block SMTP ports, so an HTTP API provider may be needed. [Validate] terms, regions, cost; none asserted
+
+2. Optional integrations
+
+AWS S3 or compatible object storage
+
+Optional
+
+Only if object storage is chosen
+
+2. Optional integrations
+
+Google OAuth client ID and secret
+
+Optional
+
+Only if Google login enabled
+
+2. Optional integrations
+
+Sentry DSN
+
+Optional
+
+2. Optional integrations
+
+Payment provider (for example Stripe)
+
+Not approved
+
+Only if a paid model is explicitly approved in future
+
+3. Customer-generated keys
+
+Platform API keys
+
+Generated by this platform
+
+Not obtained from any provider
+
+4. Optional AI
+
+AI provider API key
+
+Optional
+
+Core works without it
+
+DNS and MX lookups do not require a commercial API key.
+
+SMTP probing does not require an external verification API.
+
+No paid verification provider is a dependency of the core engine.
+
+The platform generates: customer API keys, session tokens, job ids. It must obtain from outside: database/Redis infrastructure, outbound email service, optional storage, OAuth, monitoring and AI credentials.
+
+Part 17: Limitations and Assumptions
+
+17.1 Technical limitations [Limitation]
+
+SMTP checks cannot prove mailbox existence or inbox delivery; catch-all, greylisting, provider blocking and outages can make results inconclusive.
+
+Verification never reaches 100% accuracy.
+
+Many professional platforms restrict automated access; such pages return ACCESS_RESTRICTED.
+
+Public pages may not list emails; empty results are valid results.
+
+JavaScript-rendered content may need Playwright, which is deferred.
+
+Capacity is finite; throttling and queues manage load.
+
+Many cloud hosts block outbound port 25, so mailbox-level probing may be unavailable on them (Part 22.2).
+
+17.2 Assumptions [Assumption]
+
+Hosting permitting outbound port 25 is no longer assumed; see Part 22.2 and D-02.
+
+Initial scale fits a single-host or small multi-worker deployment.
+
+Email address lists for disposable/free/role detection are maintained as data and updated periodically.
+
+17.3 Open questions [Open]
+
+Numeric limits: rate limits, file sizes, row caps, crawl limits, concurrency.
+
+Retention bounds and audit-log retention.
+
+Admin private-data access approval workflow and any extra roles.
+
+Which professional URL sources, if any, are supported for Method A.
+
+Mapping table of SMTP reply codes to rule 7 vs rule 8.
+
+Whether /jobs and /finder/jobs should be unified.
+
+Success-metric targets.
+
+All items are tracked as decisions D-01 to D-22 in Part 21.
+
+17.4 Items requiring validation [Validate]
+
+Jurisdiction-specific legal review (privacy, data protection, scraping, anti-spam, website terms).
+
+Provider terms, pricing, regional eligibility and outbound SMTP policy of any hosting or email provider.
+
+Exact library versions and compatibility with Django 5.2 LTS and the chosen Python version.
+
+tldextract offline Public Suffix List behavior if used.
+
+Sentry data handling for personal data.
+
+Part 18: Changelog
+
+Version
+
+Date
+
+Change
+
+0.1.0
+
+2026-10-30
+
+Initial consolidated documentation package created from the master prompt. Documentation only.
+
+0.2.0
+
+2026-10-30
+
+Pre-development audit. Added: Parts 19 to 24 (consistency audit, findings, decision register D-01 to D-22, SMTP/hosting/security/legal validation, AI coding agent instructions, readiness score 73/100); folder structure and app responsibilities (3.9, 3.10); screen-by-screen UI (Part 10); full workflows 11.3, 11.4, 11.7; extra API examples (5.4); reason-code and error taxonomy additions (Part 15); revised roadmap with Phase 0 gate and SMTP spike (Part 14); verification rule precedence fix and domain-level fallback (6.4, 6.8); hosting findings. Changed: Parts 13, 16, 17 for hosting and decisions. No product decision was made on your behalf.
+
+All documents in this package share this version. Future edits must add a row here.
+
+Part 19: Cross-Document Consistency Audit (v0.2.0)
+
+Method: every Part was re-read against the master prompt and against every other Part. Result categories: Pass, Fixed in this revision, Pending decision.
+
+Check
+
+Result
+
+Free access consistent (no paid gates, no quota)
+
+Pass. Payment provider remains Not approved (Part 16).
+
+Public-only discovery consistent
+
+Pass. Part 7, 8, 9, 22 agree; LinkedIn handling pending D-05.
+
+Both-Plus Person Finder consistent
+
+Pass across Parts 2, 4, 5, 7, 10 (S-08), 11, 12, 14.
+
+AI optional
+
+Pass. AI is deferred by recommendation (D-16).
+
+Internal vs public API separated
+
+Pass (Part 3.5, 5).
+
+No mandatory paid verification provider
+
+Pass. Note: a transactional email provider is still required for account emails (D-04).
+
+No impossible guarantees
+
+Pass. Statuses and UI copy checked; wording rule added in Part 10.1.
+
+Public API error codes exist in error taxonomy
+
+Fixed: VALIDATION_ERROR, FORBIDDEN_SCOPE, NOT_FOUND, IDEMPOTENCY_CONFLICT, SERVICE_UNAVAILABLE and others added to Part 15.
+
+Folder and app structure documented
+
+Fixed: Part 3.9 added (was missing in v0.1.0).
+
+Every workflow has the required items
+
+Fixed: Parts 11.3, 11.4, 11.7 expanded (were deferred to other Parts).
+
+Screens have fields, validation and states
+
+Fixed: Part 10 rewritten screen by screen.
+
+Verification rules unambiguous
+
+Fixed: disposable modifier precedence defined (Part 6.4).
+
+Roadmap dependencies
+
+Fixed: Part 14 revised (suppression earlier, email service in Phase 2, SMTP spike in Phase 3, Phase 0 gate).
+
+Hosting compatible with SMTP probing
+
+Not consistent: named initial hosts conflict with port 25 needs. Pending D-02 and D-03 (Part 22.2).
+
+Email verification before use (Part 8.1) vs account state (Part 11.1)
+
+Pending D-07 (wording aligned to inactive until verified for now).
+
+Single Word file vs separate Markdown files
+
+Pending D-19 (master prompt requires separate Markdown files).
+
+Part 20: Pre-Development Audit Findings
+
+20.1 Alignment with the VeriEmail-inspired idea
+
+Important limitation: the master prompt supplied to me never mentions VeriEmail, and no VeriEmail feature list or screenshots were provided. I cannot honestly confirm alignment with that product, and I have not guessed its features. What I verified is alignment of every feature with the master prompt itself. To complete this objective I need either a VeriEmail feature list or your confirmation that the master prompt is the source of truth (D-01).
+
+20.2 Feature scope review
+
+Feature
+
+In master prompt?
+
+Assessment
+
+Recommendation (needs approval)
+
+Single and bulk verification, company and person finder, APIs, history, admin
+
+Yes
+
+Core to the stated idea
+
+Keep
+
+Combined Finder + Verifier as its own page
+
+Yes (Module 7)
+
+Overlaps S-07 and S-08 with a Verify toggle; the workflow is required, a separate page is optional
+
+Keep workflow; UI per D-17
+
+Company Intelligence and People Intelligence as separate pages
+
+Yes (Modules 8, 9)
+
+Share extraction engine and models with finders; separate apps risk duplication
+
+Merge into one intelligence app; pages per D-17
+
+Google OAuth
+
+Yes (optional)
+
+Adds a library and credentials; not needed for core value
+
+Defer (D-16)
+
+Pause/resume bulk jobs
+
+Yes (where practical)
+
+Adds state complexity; cancel and retry cover most needs
+
+Defer (D-16)
+
+Scrapy, Playwright, trafilatura
+
+Evaluate
+
+Not needed for first version; each adds weight and risk
+
+Defer until a concrete need is shown
+
+Pandas
+
+Evaluate
+
+Standard csv and OpenPyXL suffice for upload and export
+
+Do not include initially
+
+django-ratelimit
+
+Evaluate
+
+DRF throttling covers the API; web forms covered by django-axes and view limits
+
+Omit unless a gap is found
+
+Optional AI extraction
+
+Yes
+
+Not needed for core; adds provider dependency and cost
+
+Defer (D-16)
+
+Cloudflare, Sentry, S3
+
+Evaluate
+
+Operational choices, not product features
+
+Optional, decide at Phase 12
+
+Notifications app
+
+In folder structure
+
+No notification feature is specified beyond account emails
+
+Implement as a service module, not an app with models
+
+Reports as separate app from history
+
+In folder structure
+
+Same data and ownership rules
+
+Merge into history_reports
+
+20.3 Findings register
+
+ID
+
+Area
+
+Finding
+
+Severity
+
+Status
+
+F-01
+
+Hosting
+
+Initial hosts named in the master prompt restrict outbound SMTP (Part 22.2); mailbox probing may be impossible there.
+
+Critical
+
+Open: D-02, D-03
+
+F-02
+
+Product
+
+No VeriEmail reference material available to check alignment.
+
+High
+
+Open: D-01
+
+F-03
+
+Legal
+
+Method A (profile URL) for LinkedIn conflicts with LinkedIn's terms on automated access.
+
+High
+
+Open: D-05
+
+F-04
+
+Product
+
+Inference rule (when pattern evidence is enough) undefined.
+
+High
+
+Open: D-06
+
+F-05
+
+Docs
+
+Folder and file structure missing.
+
+High
+
+Fixed (3.9)
+
+F-06
+
+Docs
+
+API error codes not in the error taxonomy.
+
+Medium
+
+Fixed (Part 15)
+
+F-07
+
+Docs
+
+Several workflows lacked required items; screens lacked fields and states.
+
+Medium
+
+Fixed (Parts 10, 11)
+
+F-08
+
+Rules
+
+Disposable modifier precedence ambiguous.
+
+Medium
+
+Fixed (6.4)
+
+F-09
+
+Roadmap
+
+Suppression handling scheduled after the phase that needs it; email provider needed before Phase 2 was planned.
+
+Medium
+
+Fixed (Part 14)
+
+F-10
+
+Security
+
+Stored SMTP transcripts could hold third-party data.
+
+Medium
+
+Fixed: store reason codes and summarized evidence only (Part 22.4)
+
+F-11
+
+Data
+
+No opt-out or suppression entry point for third parties.
+
+Medium
+
+Proposed S-22; D-14
+
+F-12
+
+Legal
+
+No Terms, Privacy or Acceptable Use pages in the UI list.
+
+High
+
+Added S-21; content needs D-15
+
+F-13
+
+Tech
+
+Google OAuth library not chosen.
+
+Low
+
+Deferred with OAuth (D-16)
+
+F-14
+
+Tech
+
+CSV handling details missing (encoding, delimiter, BOM, header detection); XLSX multi-sheet behavior.
+
+Medium
+
+Fixed in Part 23.5 rules; sheet selection proposed
+
+F-15
+
+Tech
+
+Idempotency key retention period and catch-all cache TTL not defined.
+
+Low
+
+Numeric, decide with D-08
+
+F-16
+
+Account
+
+Account verification gating and password policy not decided.
+
+Medium
+
+Open: D-07
+
+F-17
+
+Dashboard
+
+Metric definitions ambiguous (counts of events vs unique emails).
+
+Medium
+
+Open: D-22
+
+F-18
+
+Delivery
+
+Master prompt requires separate Markdown files; this package is one Word file.
+
+Low
+
+Open: D-19
+
+F-19
+
+Abuse
+
+Free service with probing and crawling is attractive for abuse; sign-up friction not decided.
+
+High
+
+Open: D-18
+
+F-20
+
+Ops
+
+Probe identity (HELO name, MAIL FROM, reverse DNS) undefined; affects reputation and acceptance by mail servers.
+
+High
+
+Open: D-20
+
+F-21
+
+Tech
+
+Version claims: Django 5.2 LTS and Python compatibility checked from secondary sources only.
+
+Low
+
+Re-check against djangoproject.com in Phase 1
+
+F-22
+
+Data
+
+Account deletion cascade across later models not planned.
+
+Medium
+
+Fixed: cascade extended per phase (Part 14)
+
+Part 21: Decision Register (Approval Required)
+
+I have not made any product decision for you. Each item lists options and my recommendation; none is final until you approve. Items marked Blocks Phase X must be answered before that phase starts. Please reply with the decision IDs and your choice (for example: D-02 approve C).
+
+ID
+
+Decision needed
+
+Options
+
+My recommendation
+
+Blocks
+
+D-01
+
+Source of truth for scope: master prompt, or a VeriEmail feature list?
+
+A) master prompt only. B) You supply VeriEmail features; I re-audit.
+
+B if VeriEmail alignment matters; otherwise A
+
+Phase 0
+
+D-02
+
+SMTP mailbox probing strategy
+
+A) Dedicated probe host/worker on a provider that confirms outbound port 25. B) Domain-level checks only (no mailbox probing). C) Start with B, add A later.
+
+C. Deliverable would not be issued without mailbox-level evidence, so under B results are mostly Unknown or domain-level; the product claim must change accordingly
+
+Phase 3
+
+D-03
+
+Initial deployment target
+
+A) Host that permits port 25 for probing. B) Railway/Render/DO for web only, with probing elsewhere or off. C) Other.
+
+B with D-02 C, until a probe host is confirmed in writing
+
+Phase 1 and 3
+
+D-04
+
+Transactional email provider and method (HTTP API or SMTP port 587)
+
+Provider to be chosen after checking terms, regions and host port restrictions.
+
+Use a provider-agnostic interface; prefer HTTP API where host blocks SMTP ports
+
+Phase 2
+
+D-05
+
+Method A supported sources
+
+A) Only public pages that allow automated access (robots, terms). B) Also social/professional platforms. C) None initially (name + company only).
+
+A, with LinkedIn URLs returned as unsupported source (its terms prohibit automated access)
+
+Phase 6
+
+D-06
+
+Evidence needed before generating an inferred email
+
+A) At least 2 discovered emails on the domain matching one pattern. B) At least 1. C) Never infer.
+
+A
+
+Phase 6
+
+D-07
+
+Sign-up gating and password policy
+
+Email verification required before finder, verifier and API use? Minimum password length? Registration CAPTCHA?
+
+Verification required before any outbound crawling or probing; length per Django validators plus 12 minimum is a proposal
+
+Phase 2
+
+D-08
+
+Numeric limits (see table 21.1)
+
+Approve, change or ask for load-test-based values.
+
+Approve as starting values, tune in Phase 11
+
+Phase 4, 5, 9
+
+D-09
+
+Retention defaults and bounds
+
+Default period, minimum and maximum user setting, audit-log retention.
+
+Default 90 days, user range 7 to 365, audit logs longer; needs legal review
+
+Phase 2 and 10
+
+D-10
+
+Role-based addresses (info@, support@) status effect
+
+A) Flag only. B) Risky.
+
+A
+
+Phase 3
+
+D-11
+
+Disposable and free-provider list source
+
+Open source list, self-maintained list, or both; license check.
+
+Open-source list with license verified, plus local overrides
+
+Phase 3
+
+D-12
+
+Admin access to private user data
+
+A) None, aggregates only. B) Break-glass with mandatory reason, logged, optional user notice.
+
+B limited to abuse and support cases
+
+Phase 10
+
+D-13
+
+Roles beyond User and Admin
+
+Add Auditor or Support?
+
+Keep User and Admin
+
+Phase 2
+
+D-14
+
+Public opt-out / suppression request page
+
+Provide S-22 or handle by email only.
+
+Provide S-22
+
+Phase 5
+
+D-15
+
+Operator, target regions, legal pages and review
+
+Who operates the service, which regions are in scope, who writes and reviews Terms, Privacy and Acceptable Use.
+
+Obtain jurisdiction-specific legal review before public launch
+
+Phase 12 (drafts in 2)
+
+D-16
+
+Deferrals
+
+Approve deferring Google OAuth, pause/resume, Scrapy, Playwright, trafilatura, Pandas and optional AI.
+
+Approve deferral of all
+
+Phase 2 and later
+
+D-17
+
+UI and app structure for intelligence and combined flows
+
+A) Separate pages and apps as in the prompt. B) One intelligence app; combined flow as a Verify toggle on finders.
+
+B
+
+Phase 7 and 8
+
+D-18
+
+Abuse controls for free sign-up
+
+CAPTCHA on registration, per-account job caps, manual approval, none.
+
+Per-account caps plus email verification; CAPTCHA only if abuse appears (adds a third-party dependency)
+
+Phase 2 and 11
+
+D-19
+
+Documentation format
+
+Single Word file only, or also the 18 separate Markdown files (better for an AI coding agent).
+
+Both
+
+Phase 1
+
+D-20
+
+Probe identity
+
+HELO hostname, MAIL FROM address, reverse DNS, operating domain.
+
+Define a dedicated domain and matching reverse DNS before any probing
+
+Phase 3
+
+D-21
+
+Brand
+
+Product name, logo, colors.
+
+Not needed to start; use neutral tokens
+
+None
+
+D-22
+
+Dashboard metric definitions and success-metric targets
+
+Count events or unique emails; period; numeric targets.
+
+Unique emails by latest status within period; no targets until baseline exists
+
+Phase 2
+
+21.1 Proposed starting limits for D-08 (proposals, not decisions)
+
+Limit
+
+Proposed starting value
+
+Why
+
+Upload size
+
+5 MB
+
+Bounded memory for parsing
+
+Rows per bulk job
+
+10,000
+
+Bounded job duration on a small deployment
+
+Concurrent active jobs per user
+
+2
+
+Fairness on free access
+
+Crawl depth / pages per job
+
+2 / 30
+
+Bounded crawl footprint
+
+Per-domain crawl concurrency
+
+1 with delay
+
+Politeness
+
+Max response size per page
+
+2 MB
+
+Avoid large downloads
+
+SMTP probes per target mail host
+
+Low fixed concurrency with delay
+
+Avoid being blocklisted
+
+Public API throttle
+
+To be set from Phase 11 load tests
+
+No measured data yet
+
+Idempotency key retention
+
+24 hours
+
+Typical retry window
+
+DomainRecord cache TTL
+
+24 hours for MX and flags; shorter for catch-all state
+
+Balance freshness and probe volume
+
+21.2 Technical decisions made in this revision (no approval needed, can be reversed)
+
+UUID primary keys for externally visible records; cursor pagination; Authorization: Api-Key header; hashed API keys; one error envelope for all API errors.
+
+SMTP transcripts are not stored; only reason codes and summarized evidence.
+
+Celery tasks use late acknowledgement with idempotent writes; chunk claiming by conditional update.
+
+Page bodies are not stored by default; only metadata and extracted facts with source URLs.
+
+Disposable modifier rule defined in Part 6.4.
+
+Notifications are a service module; no notification model.
+
+Part 22: Validation of SMTP, Hosting, Security and Legal Considerations
+
+22.1 SMTP verification limitations (validated against the design)
+
+Mailbox probing needs outbound TCP port 25 from the probing host to arbitrary mail servers. Cloud hosts commonly restrict this to fight spam.
+
+A server may accept every recipient (catch-all), defer with temporary errors (greylisting), hide mailbox existence, or block the prober's IP. These cases produce Risky or Unknown, never Deliverable.
+
+Probing from one IP at volume risks that IP being blocklisted; this affects result quality for every user. Rate limits per mail host, a proper reverse DNS name and a real HELO name are required (D-20).
+
+A successful RCPT answer does not prove inbox delivery.
+
+22.2 Hosting compatibility
+
+Findings come from the hosts' own pages where available and from user and community reports otherwise. Policies change; each must be confirmed with the provider in writing before commitment.
+
+Host
+
+Finding
+
+Source type
+
+Impact
+
+Render
+
+Free web services blocked outbound SMTP ports 25, 465, 587 from 26 Sep 2025. A support reply in a community thread states port 25 stays blocked for all services because of the underlying cloud infrastructure.
+
+Render changelog and support replies
+
+Mailbox probing not possible there
+
+Railway
+
+A support reply states outbound SMTP (25, 465, 587, 2525) is disabled on Hobby plans and available on Pro and above.
+
+Railway community help thread
+
+Probing possible only on higher plans and unconfirmed for port 25 use as a prober
+
+DigitalOcean
+
+Official help page states SMTP ports 25, 465 and 587 are blocked on Droplets by default (page last verified 13 Jul 2026). Community answers to users asking for port 25 for SMTP checks say it stays blocked.
+
+DigitalOcean documentation and community
+
+Mailbox probing not possible without an exception that is not documented
+
+AWS EC2
+
+Reported blocked by default by third-party guides; official AWS statement not retrieved.
+
+Secondary only
+
+[Validate] with AWS documentation and the request process
+
+Hetzner
+
+One third-party test reports port 25 and 465 blocked, 587 open; unblocks granted case by case.
+
+Single secondary test
+
+[Validate] with Hetzner policy
+
+Conclusion: none of the hosts named in the master prompt for initial deployment is confirmed to allow port 25 probing. This is the main technical risk (F-01). Also note that account emails sent by SMTP on ports 465 or 587 are blocked on some of these hosts too, so an HTTP-API email provider may be required (D-04). Part 13 has been updated accordingly.
+
+22.3 Platform and version compatibility
+
+Django 5.2 is an LTS release reported as supported until April 2028 and compatible with Python 3.10 to 3.13; Python 3.12 is within that range. Django 6.0 exists as a standard release with a shorter window. The prompt's choice of 5.2 LTS stands. Sources were secondary; confirm on djangoproject.com during Phase 1.
+
+Library versions are pinned in Phase 1 after checking compatibility with Django 5.2; none are asserted in this document.
+
+22.4 Security checklist (to verify in Phase 11)
+
+SSRF: scheme and port allow-list, DNS resolution then block of private, loopback, link-local (including cloud metadata 169.254.169.254) and reserved IPv4 and IPv6 ranges, IP pinning, re-validation on each redirect, timeouts, size caps.
+
+Authentication: Argon2, lockout, secure cookies, session rotation, CSRF, password reset tokens single-use and expiring.
+
+Authorization: owner filters on every query; object-level tests; scoped API keys; admin actions audited.
+
+API keys: random, hashed, shown once, revocable, never logged.
+
+Uploads: extension, content and signature checks, size and row limits, no formula execution, export neutralization of formula-leading cells, files outside web root.
+
+Output safety: escape all crawled text; never render crawled HTML.
+
+Logging: no passwords, keys, tokens or SMTP transcripts.
+
+Dependencies: pip-audit and Bandit in CI; Docker image minimal and non-root.
+
+Secrets only from environment or a secret store; .env never committed.
+
+Backups encrypted; restore tested.
+
+22.5 Legal and compliance considerations (not legal advice)
+
+No legal conclusion is drawn here; each item needs review by a qualified lawyer for the operator's and users' jurisdictions (D-15).
+
+Area
+
+Consideration
+
+Website terms and robots
+
+Respecting robots and terms is a design rule, but terms differ by site; some platforms prohibit automated access outright.
+
+LinkedIn
+
+Its User Agreement, per multiple sources, prohibits scraping and automated access to profile data; a US district court in the hiQ dispute found the agreement prohibited hiQ's scraping. Treat professional-network URLs as unsupported unless permission exists (D-05).
+
+Personal data
+
+Business emails of identifiable individuals are personal data in many jurisdictions. Questions: lawful basis, notice, data subject rights, retention, cross-border transfer, processor or controller role for API customers.
+
+Direct marketing law
+
+Users may use results for outreach. Anti-spam and e-privacy rules vary by country; Acceptable Use must forbid unlawful outreach and the platform should not facilitate sending.
+
+Computer misuse
+
+Crawling and SMTP probing must stay within permitted access; port scanning-like behavior must be avoided.
+
+Platform documents
+
+Terms, Privacy Policy, Acceptable Use, cookie notice if required, API terms, abuse contact, takedown and opt-out process.
+
+Operator and hosting terms
+
+Hosting providers may forbid mail probing or high-volume crawling in their acceptable use policies; confirm.
+
+Part 23: AI Coding Agent Instructions
+
+These rules apply to any AI coding agent or developer implementing this specification. They are part of the specification and are binding.
+
+23.1 Operating principles
+
+Implement only the phase currently authorized. Never start a later phase.
+
+Never invent a product decision. If a decision is missing or listed in Part 21 as unapproved, stop and ask the owner with the options.
+
+Never invent library behavior, API fields or provider capabilities. If unsure, read the official documentation or write a small test to confirm, and record the finding.
+
+Prefer the simplest design that meets the specification. Do not add libraries, apps, models or endpoints that are not specified; propose them instead.
+
+Core finder and verifier must work with AI disabled. AI must never decide deliverability or invent an email.
+
+Every result must keep evidence: source and method for discovered emails, reason codes and evidence level for verification.
+
+Never bypass authentication, CAPTCHA, robots rules or access restrictions, and never fetch a URL without the SSRF guard.
+
+Keep documentation in sync: when behavior changes, update the specification and the changelog in the same change.
+
+23.2 Repository and file structure standards
+
+Follow Part 3.9. Additional rules:
+
+Business logic lives in core/ or in each app's services.py; views, serializers and templates stay thin.
+
+Each app has: models.py, services.py, views.py, urls.py, serializers.py (if API), tasks.py (if Celery), tests under tests/<app>/.
+
+Settings split into base, development and production; no environment-specific values in code.
+
+Templates under templates/<area>/; reusable parts under templates/components/.
+
+One migration per logical change; never edit applied migrations.
+
+Names: snake_case modules and functions, PascalCase classes, UPPER_CASE constants; reason codes and error codes are constants defined once in core and imported everywhere.
+
+No dead code, no commented-out blocks, no TODO without an issue reference.
+
+23.3 Implementation rules
+
+Type hints on all public functions; docstring on every engine entry point stating inputs, outputs and what it cannot establish.
+
+All outbound network access goes through one safe-fetch module (HTTP) or one SMTP client module; no other module opens sockets.
+
+All time limits, sizes and counts come from configuration with documented defaults (Part 21.1 once approved).
+
+Celery tasks must be idempotent, accept primary keys not objects, set time limits, retry only on retryable errors with exponential backoff, and update job status in the database.
+
+Database writes that must succeed together use transactions; uniqueness is enforced by constraints, not only by code.
+
+Every query on user data filters by owner; add a test per endpoint proving another user gets 404.
+
+Never log secrets, tokens, API keys, passwords, full uploads or SMTP transcripts.
+
+Use constants for status and reason codes exactly as defined in Part 6 and Part 15.
+
+23.4 Test-first workflow per task
+
+Read the phase section, the relevant workflow (Part 11), screen (Part 10), API (Part 5) and errors (Part 15).
+
+Write failing tests from the acceptance criteria.
+
+Implement the minimum to pass.
+
+Run the full test suite, linters, Bandit and pip-audit.
+
+Complete the self-review checklist (23.6).
+
+Update docs and changelog; report what was done, what was not done and any questions.
+
+23.5 Specific technical rules
+
+CSV uploads: decode as UTF-8 with or without BOM; detect delimiter among comma, semicolon and tab; header row detection; reject files that cannot be parsed with INVALID_CSV.
+
+XLSX uploads: read-only, data-only mode; use the first sheet by default and let the user choose another sheet [Proposed]; ignore formulas; reject macros files.
+
+Export: neutralize cells beginning with =, +, - or @.
+
+Email normalization: trim whitespace; lowercase the domain; convert IDN domain to ASCII for DNS; keep original input for display.
+
+Never treat candidate generation as evidence; store origin as discovered or inferred and never change it.
+
+SMTP client: connect with timeouts, EHLO with configured name, MAIL FROM with configured address, RCPT TO, then QUIT; never send DATA.
+
+If mailbox probing is unavailable, return the documented domain-level result and PROBE_UNAVAILABLE note, not a guess.
+
+23.6 Self-review checklist (run before declaring a task done)
+
+Area
+
+Check
+
+Scope
+
+Only the authorized phase touched; no unrequested features or dependencies.
+
+Decisions
+
+No unapproved decision implemented; questions listed.
+
+Security
+
+SSRF guard used; owner filters present; no secrets logged; uploads validated.
+
+Correctness
+
+Rules match Part 6.4 exactly; labels discovered vs inferred correct; no guarantee wording.
+
+Data
+
+Constraints and indexes as specified; migrations reversible where possible.
+
+Errors
+
+Codes match Part 15; user messages safe; retry behavior as specified.
+
+Tests
+
+Acceptance criteria covered; negative and edge cases included; tests deterministic with no real third-party mail servers.
+
+UI
+
+Fields, validation and all states from Part 10 implemented; accessibility basics met.
+
+Docs
+
+Specification and changelog updated; deviations explained.
+
+23.7 Stop conditions
+
+Stop and ask the owner when: a needed decision is not approved; the specification contradicts itself; the host cannot support a required capability; a task would require bypassing a restriction; a library does not behave as documented; or an acceptance criterion cannot be met.
+
+23.8 Phase kickoff prompt template
+
+You are implementing Phase <N> of the Email Intelligence Platform.
+
+Authorized scope: Phase <N> only, as defined in Part 14 and the screens, workflows,
+
+API and error sections it references. Approved decisions: <list>.
+
+Do not make product decisions. Ask when something is missing.
+
+Work test-first, follow Part 23, and finish with the self-review checklist,
+
+a list of files changed, test results, and open questions.
+
+Part 24: Final Readiness Score
+
+Score is my professional assessment of readiness to begin implementation. Categories and weights are my proposal.
+
+Category
+
+Weight
+
+Score
+
+Reason
+
+Scope alignment and product clarity
+
+10
+
+6
+
+VeriEmail reference unavailable; master prompt alignment verified
+
+Functional completeness (feature to workflow, data, API, errors, acceptance)
+
+15
+
+12
+
+Gaps fixed; some endpoint schemas and numeric limits still pending
+
+Technical feasibility
+
+15
+
+9
+
+Hosting and port 25 conflict unresolved (F-01)
+
+Security and privacy design
+
+10
+
+8
+
+Strong design; verification in Phase 11 pending
+
+Legal and compliance readiness
+
+10
+
+5
+
+No legal review; legal pages are placeholders; LinkedIn handling undecided
+
+UI/UX specification
+
+10
+
+9
+
+Screen by screen with states; visual design not defined by design
+
+AI coding agent instructions
+
+10
+
+9
+
+Binding rules and checklists added; untested on a real agent run
+
+Roadmap and dependencies
+
+10
+
+9
+
+Revised and gated; depends on decisions
+
+Cross-document consistency
+
+5
+
+4
+
+Known issues fixed; pending items listed
+
+Decisions resolved
+
+5
+
+2
+
+22 decisions await approval
+
+Total: 73 / 100.
+
+What this means: the documentation is solid enough to start Phase 0 and Phase 1 once D-01 and D-19 are answered, but not enough to start Phase 3 until D-02, D-03 and D-20 are resolved and the SMTP capability is confirmed on a real host.
+
+What would raise the score: answers to Part 21 (about +10 to +15), a written confirmation that a chosen host permits outbound port 25 (about +5), and legal review of scope and legal pages (about +5). These are estimates, not guarantees.
+
+24.1 What I need from you
+
+Answer the blocking decisions: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-19, D-20.
+
+Tell me whether to also produce the 18 documents as separate Markdown files (D-19).
+
+Provide VeriEmail reference features if alignment with it matters (D-01).

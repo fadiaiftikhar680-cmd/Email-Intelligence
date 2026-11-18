@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Email Intelligence Platform | Find. Verify. Enrich.{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+  <!-- Authenticated App Shell -->
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">E</div>
+        <span>Email Intel</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="{% url 'dashboard' %}" class="sidebar-link">📊 Dashboard</a>
+
+        <div class="sidebar-section-title">Engines</div>
+        <a href="{% url 'single_verifier' %}" class="sidebar-link">✅ Single Verifier</a>
+        <a href="{% url 'bulk_verifier' %}" class="sidebar-link">📁 Bulk Verifier</a>
+        <a href="{% url 'company_finder' %}" class="sidebar-link">🏢 Company Finder</a>
+        <a href="{% url 'person_finder' %}" class="sidebar-link">👤 Person Finder</a>
+        <a href="{% url 'social_finder' %}" class="sidebar-link">🌐 Social Media Finder</a>
+        <a href="{% url 'combined_finder' %}" class="sidebar-link">⚡ Combined Pipeline</a>
+        <a href="{% url 'intelligence_directory' %}" class="sidebar-link">🧠 Intelligence</a>
+
+        <div class="sidebar-section-title">Data & Platform</div>
+        <a href="{% url 'verification_history' %}" class="sidebar-link">📜 Verification History</a>
+        <a href="{% url 'finder_history' %}" class="sidebar-link">🔍 Finder History</a>
+        <a href="{% url 'settings' %}" class="sidebar-link">⚙️ Settings</a>
+
+        {% if user.is_admin or user.is_staff %}
+          <div class="sidebar-section-title">Administration</div>
+          <a href="{% url 'admin_dashboard' %}" class="sidebar-link" style="color: #f59e0b;">🛡️ Admin Portal</a>
+        {% endif %}
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="mono" style="font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</span>
+        <span class="badge" style="background: #10b981; color: #ffffff; font-size: 0.72rem; padding: 0.2rem 0.55rem; font-weight: 600;">Active</span>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700;">{% block page_title %}{% endblock %}</h2>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <a href="{% url 'single_verifier' %}" id="btn-topbar-verify" class="btn btn-secondary btn-sm" title="Start new single email verification">
+            + Verify Email
+          </a>
+          <a href="{% url 'company_finder' %}" id="btn-topbar-find" class="btn btn-primary btn-sm" title="Search company domain for emails">
+            + Find Emails
+          </a>
+        </div>
+      </header>
+
+      <main class="content-body">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+{% else %}
+  <!-- Public Layout -->
+  <header class="public-navbar">
+    <a href="{% url 'landing' %}" class="brand-logo">
+      <div class="brand-icon">E</div>
+      <span>Email Intelligence Platform</span>
+    </a>
+    <nav class="nav-links">
+      <a href="{% url 'landing' %}">Home</a>
+      <a href="{% url 'terms' %}">Terms</a>
+      <a href="{% url 'opt_out' %}">Opt-Out</a>
+      <a href="{% url 'login' %}">Log In</a>
+      <a href="{% url 'register' %}" class="btn btn-primary btn-sm">Get Started Free</a>
+    </nav>
+  </header>
+
+  <main style="max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem;">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% block public_content %}{% endblock %}
+  </main>
+
+  <footer style="border-top: 1px solid var(--border-color); background: #ffffff; padding: 2.5rem 1rem; margin-top: 4rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; font-weight: 500;">
+      <a href="{% url 'terms' %}">Terms of Service</a>
+      <a href="{% url 'privacy' %}">Privacy Policy</a>
+      <a href="{% url 'acceptable_use' %}">Acceptable Use</a>
+      <a href="{% url 'opt_out' %}">Do Not Disclose / Opt-Out</a>
+      <a href="{% url 'api_docs' %}">API Reference</a>
+    </div>
+    <p>Find. Verify. Enrich. — Honest technical evidence for professional communication.</p>
+    <p style="font-size: 0.78rem; margin-top: 0.5rem; color: #94a3b8;">Results show technical evidence and are not a delivery guarantee.</p>
+  </footer>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var verifyBtn = document.getElementById('btn-topbar-verify');
+  if (verifyBtn) {
+    verifyBtn.addEventListener('click', function(e) {
+      var emailInput = document.getElementById('id_email_input') || document.querySelector('input[name="email"]');
+      if (emailInput && window.location.pathname.includes('/verifier/single/')) {
+        e.preventDefault();
+        emailInput.value = '';
+        emailInput.focus();
+        emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var resultsCard = document.getElementById('verification-results-card');
+        if (resultsCard) {
+          resultsCard.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  var findBtn = document.getElementById('btn-topbar-find');
+  if (findBtn) {
+    findBtn.addEventListener('click', function(e) {
+      var urlInput = document.getElementById('id_finder_url_input') || document.querySelector('input[name="url"]');
+      if (urlInput && window.location.pathname.includes('/finder/company/')) {
+        e.preventDefault();
+        urlInput.value = '';
+        urlInput.focus();
+        urlInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>
+

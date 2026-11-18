@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}403 - Forbidden | Email Intelligence Platform{% endblock %}
+
+{% block public_content %}
+<div style="max-width: 520px; margin: 4rem auto; text-align: center;">
+  <div class="card" style="padding: 3rem 2rem;">
+    <div style="font-size: 3.5rem; font-weight: 900; color: #ef4444; margin-bottom: 0.5rem;">403</div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 0.75rem;">Access Forbidden</h2>
+    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem;">
+      {{ message|default:"You do not have permission to access this resource." }}
+    </p>
+    <span class="chip" style="margin-bottom: 1.5rem;">Error Code: {{ error_code|default:"FORBIDDEN" }}</span>
+    <div>
+      <a href="/" class="btn btn-primary">Return Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

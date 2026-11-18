@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Operational Intelligence Dashboard{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js for real-time visual telemetry -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  .pulse-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Timeframe Filter & Quick Actions Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div style="display: flex; gap: 0.5rem; background: #e2e8f0; padding: 0.3rem; border-radius: var(--radius-sm);">
+    <a href="{% url 'dashboard' %}?timeframe=all" class="btn btn-sm {% if timeframe == 'all' %}btn-primary{% else %}btn-secondary{% endif %}" style="border: none;">All Time</a>
+    <a href="{% url 'dashboard' %}?timeframe=30d" class="btn btn-sm {% if timeframe == '30d' %}btn-primary{% else %}btn-secondary{% endif %}" style="border: none;">Last 30 Days</a>
+    <a href="{% url 'dashboard' %}?timeframe=7d" class="btn btn-sm {% if timeframe == '7d' %}btn-primary{% else %}btn-secondary{% endif %}" style="border: none;">Last 7 Days</a>
+    <a href="{% url 'dashboard' %}?timeframe=today" class="btn btn-sm {% if timeframe == 'today' %}btn-primary{% else %}btn-secondary{% endif %}" style="border: none;">Today</a>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{% url 'single_verifier' %}" class="btn btn-primary btn-sm">+ Verify Email</a>
+    <a href="{% url 'bulk_verifier' %}" class="btn btn-secondary btn-sm">📁 Upload List</a>
+    <a href="{% url 'company_finder' %}" class="btn btn-secondary btn-sm">🏢 Find Emails</a>
+    <a href="{% url 'social_finder' %}" class="btn btn-secondary btn-sm">🌐 Social Finder</a>
+  </div>
+</div>
+
+<!-- Active Background Job Pulse Card (if a job is actively running) -->
+{% if active_bulk_job or active_finder_job %}
+  <div class="card" style="border: 2px solid #3b82f6; background: #eff6ff; padding: 1.25rem 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.85rem;">
+      <span class="pulse-indicator"></span>
+      <div>
+        <strong>Active Background Processing:</strong>
+        {% if active_bulk_job %}
+          Bulk Job <code class="mono">{{ active_bulk_job.filename }}</code> is currently <em>{{ active_bulk_job.status }}</em>.
+        {% elif active_finder_job %}
+          Finder Crawl <code class="mono">{{ active_finder_job.display_target }}</code> is currently <em>{{ active_finder_job.status }}</em>.
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      {% if active_bulk_job %}
+        <a href="{% url 'bulk_job_detail' active_bulk_job.id %}" class="btn btn-primary btn-sm">Live Progress →</a>
+      {% elif active_finder_job %}
+        <a href="{% url 'finder_job_detail' active_finder_job.id %}" class="btn btn-primary btn-sm">View Crawl →</a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<!-- Primary Metrics Grid (Part 10: S-06) -->
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="metric-title">Total Verifications</div>
+    <div class="metric-value">{{ total_verifications }}</div>
+    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">Deterministic checks performed</div>
+  </div>
+
+  <div class="metric-card" style="border-top: 3px solid #10b981;">
+    <div class="metric-title" style="color: #065f46;">Deliverable</div>
+    <div class="metric-value" style="color: #047857;">{{ deliverable_count }}</div>
+    <div style="font-size: 0.8rem; color: #059669; margin-top: 0.4rem; font-weight: 600;">{{ deliverable_pct }}% of verified list</div>
+  </div>
+
+  <div class="metric-card" style="border-top: 3px solid #f59e0b;">
+    <div class="metric-title" style="color: #92400e;">Risky (Catch-All / Disp.)</div>
+    <div class="metric-value" style="color: #b45309;">{{ risky_count }}</div>
+    <div style="font-size: 0.8rem; color: #d97706; margin-top: 0.4rem; font-weight: 600;">{{ risky_pct }}% of verified list</div>
+  </div>
+
+  <div class="metric-card" style="border-top: 3px solid #ef4444;">
+    <div class="metric-title" style="color: #991b1b;">Undeliverable</div>
+    <div class="metric-value" style="color: #b91c1c;">{{ undeliverable_count }}</div>
+    <div style="font-size: 0.8rem; color: #dc2626; margin-top: 0.4rem; font-weight: 600;">{{ undeliverable_pct }}% bounce protection</div>
+  </div>
+
+  <div class="metric-card" style="border-top: 3px solid #64748b;">
+    <div class="metric-title">Unknown / Inconclusive</div>
+    <div class="metric-value" style="color: #475569;">{{ unknown_count }}</div>
+    <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.4rem; font-weight: 600;">{{ unknown_pct }}% strictly unverified</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-title">Emails Discovered</div>
+    <div class="metric-value" style="color: #2563eb;">{{ total_discovered_emails }}</div>
+    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">Across {{ total_finder_jobs }} company runs</div>
+  </div>
+</div>
+
+<!-- Interactive Chart Visualizations (Phase 2) -->
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.75rem; margin-bottom: 2rem;">
+  <!-- Donut Chart: Deliverability Distribution -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Deliverability Breakdown</h3>
+    </div>
+    <div style="position: relative; height: 260px; display: flex; align-items: center; justify-content: center;">
+      {% if total_verifications > 0 %}
+        <canvas id="distributionDonutChart"></canvas>
+      {% else %}
+        <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">No verification data for this timeframe.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Bar/Line Chart: Verification Volume Timeline -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">7-Day Verification Activity</h3>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="volumeTimelineChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Telemetry & Quota Gauges -->
+<div class="card" style="padding: 1.25rem 1.75rem; background: #ffffff;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; align-items: center;">
+    <div>
+      <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Active API Keys</span>
+      <div style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.2rem;">{{ active_keys_count }} Active Keys</div>
+    </div>
+    <div>
+      <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">API Calls Today</span>
+      <div style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.2rem;">{{ api_calls_today }} Requests</div>
+    </div>
+    <div>
+      <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Verification Policy</span>
+      <div style="font-size: 0.95rem; font-weight: 600; color: #059669; margin-top: 0.2rem;">Strict Evidence-Only (No Guesses)</div>
+    </div>
+    <div style="text-align: right;">
+      <a href="{% url 'api_keys' %}" class="btn btn-secondary btn-sm">Manage API Keys ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activity Tables Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 1.75rem;">
+  <!-- Recent Verifications Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Recent Verifications</h3>
+      <a href="{% url 'verification_history' %}" style="font-size: 0.85rem; font-weight: 600;">View All →</a>
+    </div>
+
+    {% if recent_verifications %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target Email</th>
+              <th>Status</th>
+              <th>Reason Codes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in recent_verifications %}
+              <tr>
+                <td class="mono"><strong>{{ v.email_normalized }}</strong></td>
+                <td>
+                  <span class="badge {{ v.status }}">{{ v.status }}</span>
+                </td>
+                <td>
+                  {% for r in v.reason_codes %}
+                    <span class="chip">{{ r }}</span>
+                  {% empty %}
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">Clean</span>
+                  {% endfor %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No verifications yet. <a href="{% url 'single_verifier' %}">Verify an email</a>.</p>
+    {% endif %}
+  </div>
+
+  <!-- Recent Finder Queries Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Recent Public Discovery Runs</h3>
+      <a href="{% url 'finder_history' %}" style="font-size: 0.85rem; font-weight: 600;">View All →</a>
+    </div>
+
+    {% if recent_finder_jobs %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target Domain / Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Found</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in recent_finder_jobs %}
+              <tr>
+                <td>
+                  <a href="{% url 'finder_job_detail' job.id %}" style="font-weight: 600;">
+                    {{ job.display_target|truncatechars:26 }}
+                  </a>
+                </td>
+                <td style="text-transform: capitalize; font-size: 0.85rem;">{{ job.kind }}</td>
+                <td>
+                  <span class="badge" style="background: #f1f5f9; color: #334155;">{{ job.status }}</span>
+                </td>
+                <td><strong style="color: #2563eb;">{{ job.result_count }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No finder queries yet. <a href="{% url 'company_finder' %}">Launch a company crawl</a>.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="honest-banner">
+  <strong>Standing Accuracy Principle:</strong> Results show technical deliverability evidence gathered deterministically from DNS records, mail server RCPT signals, and disposable lists. Mailbox verification is an honest technical evaluation and never promises a delivery guarantee.
+</div>
+
+<!-- Chart.js Script Initialization -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  var chartPayload = {{ chart_data_json|safe }};
+
+  // 1. Deliverability Donut Chart
+  var donutCanvas = document.getElementById("distributionDonutChart");
+  if (donutCanvas && chartPayload.distribution.some(function(v) { return v > 0; })) {
+    new Chart(donutCanvas.getContext("2d"), {
+      type: "doughnut",
+      data: {
+        labels: ["Deliverable", "Risky", "Undeliverable", "Unknown"],
+        datasets: [{
+          data: chartPayload.distribution,
+          backgroundColor: ["#10b981", "#f59e0b", "#ef4444", "#94a3b8"],
+          borderWidth: 2,
+          borderColor: "#ffffff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { boxWidth: 12, font: { size: 11 } }
+          }
+        },
+        cutout: "68%"
+      }
+    });
+  }
+
+  // 2. Volume Timeline Stacked Bar Chart
+  var timelineCanvas = document.getElementById("volumeTimelineChart");
+  if (timelineCanvas) {
+    new Chart(timelineCanvas.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: chartPayload.labels,
+        datasets: [
+          {
+            label: "Deliverable",
+            data: chartPayload.deliverable,
+            backgroundColor: "#10b981",
+            borderRadius: 4
+          },
+          {
+            label: "Undeliverable",
+            data: chartPayload.undeliverable,
+            backgroundColor: "#ef4444",
+            borderRadius: 4
+          },
+          {
+            label: "Risky / Unknown",
+            data: chartPayload.other,
+            backgroundColor: "#cbd5e1",
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+        },
+        plugins: {
+          legend: {
+            position: "top",
+            labels: { boxWidth: 12, font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

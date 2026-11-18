@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Profile & Settings{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px;">
+  <!-- Profile & Preferences Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.25rem;">Account Preferences</h3>
+    </div>
+
+    <form method="post" action="{% url 'settings' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_profile">
+
+      <div class="form-group">
+        <label class="form-label">Email Address (Primary Identity)</label>
+        <input type="text" class="form-input" value="{{ user.email }}" disabled style="background: #f8fafc; color: #64748b;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="display_name">Display Name</label>
+        <input type="text" id="display_name" name="display_name" class="form-input" value="{{ profile.display_name }}" placeholder="Jane Doe">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="timezone">Preferred Timezone</label>
+        <input type="text" id="timezone" name="timezone" class="form-input" value="{{ profile.timezone }}" placeholder="UTC">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="retention_days">Data Retention Period (Days)</label>
+        <input type="number" id="retention_days" name="retention_days" class="form-input" min="7" max="365" value="{{ profile.retention_days }}">
+        <small style="color: var(--text-muted); font-size: 0.8rem;">
+          History records older than this threshold are purged automatically (Bounds: 7 to 365 days).
+        </small>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Preferences</button>
+    </form>
+  </div>
+
+  <!-- Change Password Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.25rem;">Security & Password</h3>
+    </div>
+
+    <form method="post" action="{% url 'settings' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_password">
+
+      <div class="form-group">
+        <label class="form-label" for="old_password">Current Password</label>
+        <input type="password" id="old_password" name="old_password" class="form-input" required placeholder="••••••••••••">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="new_password">New Password (Min 12 characters)</label>
+        <input type="password" id="new_password" name="new_password" class="form-input" required minlength="12" placeholder="••••••••••••">
+      </div>
+
+      <button type="submit" class="btn btn-secondary">Update Password</button>
+    </form>
+  </div>
+
+  <!-- Danger Zone Card: Account Deletion (Part 4.6 Cascade) -->
+  <div class="card" style="border-color: #fecaca; background: #fff5f5;">
+    <div class="card-header">
+      <h3 style="font-size: 1.25rem; color: #991b1b;">Danger Zone: Delete Account</h3>
+    </div>
+    <p style="color: #7f1d1d; font-size: 0.92rem; margin-bottom: 1.25rem; line-height: 1.6;">
+      Permanently deletes your account and cascades to all verification records, finder jobs, API keys, and stored data. This action is irreversible.
+    </p>
+
+    <form method="post" action="{% url 'delete_account' %}" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account and all associated data?');">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" style="color: #991b1b;">To confirm, please type your email address (<strong>{{ user.email }}</strong>):</label>
+        <input type="email" name="confirm_email" class="form-input" required placeholder="{{ user.email }}">
+      </div>
+      <button type="submit" class="btn btn-danger">Delete Account & Purge Data</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+

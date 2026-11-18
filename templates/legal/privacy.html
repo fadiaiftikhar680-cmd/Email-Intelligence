@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Privacy Policy | Email Intelligence Platform{% endblock %}
+
+{% block public_content %}
+<div style="max-width: 800px; margin: 3rem auto; line-height: 1.7;">
+  <h1 style="font-size: 2rem; margin-bottom: 1rem;">Privacy Policy</h1>
+  <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Last Updated: October 30, 2026</p>
+
+  <div class="card" style="padding: 2.5rem;">
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">1. Data Minimization</h3>
+    <p style="color: #475569; margin-bottom: 1.5rem;">
+      We only process and retain business-relevant professional contact data and technical mail server responses. We do not store email message bodies, passwords in plain text, or full crawler HTML pages beyond short-lived analysis.
+    </p>
+
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">2. User Retention & Account Deletion</h3>
+    <p style="color: #475569; margin-bottom: 1.5rem;">
+      Users can configure data retention periods (from 7 to 365 days) in their account settings. Account deletion immediately cascades and permanently purges all verifications, jobs, API keys, and stored data.
+    </p>
+
+    <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem;">3. Right to Opt-Out / Suppression</h3>
+    <p style="color: #475569;">
+      Any individual or organization may request immediate exclusion of their email or domain from discovery and verification via our public <a href="{% url 'opt_out' %}">Opt-Out form</a>.
+    </p>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Bulk Email Verifier{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 1.25rem;">Upload Contact List for Verification</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Process up to 10,000 email addresses in background batches (.csv or .xlsx, max 5 MB).</p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'bulk_verifier' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="file">Select CSV or XLSX File</label>
+        <input type="file" id="file" name="file" class="form-input" accept=".csv, .xlsx" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email_column">Email Column Header (Optional)</label>
+        <input type="text" id="email_column" name="email_column" class="form-input" placeholder="e.g. Email, Contact Email (Leave empty for auto-detection)">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Start Bulk Verification</button>
+    </form>
+  </div>
+
+  <!-- Recent Bulk Jobs -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Your Bulk Verification Jobs</h3>
+    </div>
+
+    {% if recent_bulk_jobs %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>File Name</th>
+              <th>Total Rows</th>
+              <th>Valid</th>
+              <th>Duplicates</th>
+              <th>Status</th>
+              <th>Uploaded</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in recent_bulk_jobs %}
+              <tr>
+                <td><strong>{{ job.filename }}</strong></td>
+                <td>{{ job.total_rows }}</td>
+                <td><span style="color: #059669; font-weight: 600;">{{ job.valid_rows }}</span></td>
+                <td>{{ job.duplicate_rows }}</td>
+                <td>
+                  <span class="badge" style="background: #f1f5f9; color: #334155;">{{ job.status }}</span>
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ job.created_at|date:"M d, H:i" }}</td>
+                <td>
+                  <a href="{% url 'bulk_job_detail' job.id %}" class="btn btn-secondary btn-sm">Inspect & Export</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); text-align: center; padding: 2rem;">No bulk jobs uploaded yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

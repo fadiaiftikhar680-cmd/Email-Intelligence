@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block page_title %}API Management{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px;">
+
+  <!-- One-Time API Key Banner (if just generated) -->
+  {% if new_key_raw %}
+    <div class="card" style="background: #eff6ff; border: 2px solid #3b82f6;">
+      <h3 style="font-size: 1.15rem; color: #1e3a8a; margin-bottom: 0.5rem;">🎉 New API Key Generated</h3>
+      <p style="color: #1e40af; font-size: 0.92rem; margin-bottom: 1rem;">
+        Please copy your API key right now. For security reasons, the unhashed secret key will <strong>never be shown again</strong>.
+      </p>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <input type="text" id="rawKeyInput" class="form-input mono" value="{{ new_key_raw }}" readonly style="background: #fff; font-weight: 700; color: #0f172a;">
+        <button type="button" class="btn btn-primary" onclick="copyKey()">Copy Key</button>
+      </div>
+    </div>
+    <script>
+      function copyKey() {
+        var copyText = document.getElementById("rawKeyInput");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        alert("API Key copied to clipboard!");
+      }
+    </script>
+  {% endif %}
+
+  <!-- Create API Key Form -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 1.25rem;">Create New API Key</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Keys are authenticated using the <code class="mono">Authorization: Api-Key &lt;key&gt;</code> header.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'api_keys' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_key">
+
+      <div class="form-group">
+        <label class="form-label" for="name">Key Name / Description</label>
+        <input type="text" id="name" name="name" class="form-input" required placeholder="e.g. Production Backend, CRM Webhook">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Granted Scopes</label>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+          {% for scope in all_scopes %}
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; color: #334155;">
+              <input type="checkbox" name="scopes" value="{{ scope }}" checked style="accent-color: var(--primary);">
+              <span class="mono">{{ scope }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Generate API Key</button>
+    </form>
+  </div>
+
+  <!-- Active Keys List -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Your API Keys</h3>
+    </div>
+
+    {% if keys %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Key Name</th>
+              <th>Prefix</th>
+              <th>Scopes</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for k in keys %}
+              <tr>
+                <td><strong>{{ k.name }}</strong></td>
+                <td class="mono">{{ k.prefix }}...</td>
+                <td>
+                  {% for s in k.scopes %}
+                    <span class="chip" style="font-size: 0.72rem;">{{ s }}</span>
+                  {% endfor %}
+                </td>
+                <td>
+                  {% if k.status == 'active' %}
+                    <span class="badge deliverable">Active</span>
+                  {% else %}
+                    <span class="badge undeliverable">Revoked</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ k.created_at|date:"Y-m-d" }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ k.last_used_at|date:"Y-m-d H:i"|default:"Never" }}</td>
+                <td>
+                  {% if k.status == 'active' %}
+                    <form method="post" action="{% url 'api_keys' %}" onsubmit="return confirm('Revoke this key immediately?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="revoke_key">
+                      <input type="hidden" name="key_id" value="{{ k.id }}">
+                      <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+                    </form>
+                  {% else %}
+                    <span style="color: var(--text-muted); font-size: 0.82rem;">Revoked</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); text-align: center; padding: 2rem;">No API keys created yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Recent API Request Logs -->
+  {% if request_logs %}
+    <div class="card">
+      <div class="card-header">
+        <h3 style="font-size: 1.15rem;">Recent API Requests</h3>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Path</th>
+              <th>Status</th>
+              <th>Latency</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in request_logs %}
+              <tr>
+                <td><span class="chip" style="font-weight: 700;">{{ req.method }}</span></td>
+                <td class="mono" style="font-size: 0.85rem;">{{ req.path }}</td>
+                <td><strong>{{ req.status_code }}</strong></td>
+                <td style="font-size: 0.85rem;">{{ req.duration_ms }} ms</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ req.occurred_at|date:"H:i:s" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

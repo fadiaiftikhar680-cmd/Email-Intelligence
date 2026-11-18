@@ -1,0 +1,515 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Email Verifier{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <!-- Verification Form Card -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; font-weight: 700;">Deterministic Email Deliverability Check</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+          Verify up to <strong>30 email addresses simultaneously</strong> in a single operation without sending messages.
+        </p>
+      </div>
+      <span id="email-counter-badge" class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.8rem;">
+        0 / 30 Emails
+      </span>
+    </div>
+
+    <form method="post" action="{% url 'single_verifier' %}" id="verifier-form">
+      {% csrf_token %}
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <textarea 
+          name="email" 
+          id="id_email_input" 
+          rows="4" 
+          class="form-input mono" 
+          style="width: 100%; font-size: 0.92rem; line-height: 1.5; resize: vertical;" 
+          placeholder="Enter or paste email addresses (one per line, comma or space-separated, up to 30 emails):&#10;contact@example.com&#10;sarah@company.com&#10;alex@domain.org" 
+          autofocus 
+          oninput="handleEmailInputChange(this.value)">{{ input_email }}</textarea>
+      </div>
+
+      <!-- Over-30 Alert Banner (Automatically shown/activated when > 30 emails detected) -->
+      <div id="over-30-alert" style="display: none; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; color: #92400e;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <strong id="over-30-title" style="font-size: 0.95rem;">⚠️ More than 30 emails detected!</strong>
+            <div style="font-size: 0.88rem; margin-top: 0.25rem; line-height: 1.4;">
+              Direct verification verifies up to <strong>30 emails</strong> simultaneously. The <strong>Batch Processing</strong> option is automatically activated for large lists.
+            </div>
+          </div>
+          <a href="{% url 'bulk_verifier' %}" class="btn btn-secondary btn-sm" style="white-space: nowrap; font-size: 0.85rem; font-weight: 600; text-decoration: none; border-color: #f59e0b; color: #92400e; background: #ffffff;">
+            📁 Activate Batch Processing (Bulk Verifier) →
+          </a>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="font-size: 0.82rem; color: var(--text-muted);">
+          Supports 1 to 30 emails at once. Verified in parallel across active MX servers.
+        </div>
+        <button type="submit" id="submit-verify-btn" class="btn btn-primary" style="white-space: nowrap; font-weight: 600;">
+          Run Technical Verification
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- BATCH PROCESSING SHORTCUT CARD (For users with large files / > 30 emails) -->
+  <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px dashed var(--border-color); padding: 1rem 1.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h4 style="font-size: 0.92rem; font-weight: 700; margin-bottom: 0.2rem; color: #1e293b;">
+          📁 Need Batch Processing for more than 30 emails?
+        </h4>
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin: 0;">
+          Upload <code>.csv</code> or <code>.xlsx</code> contact lists (up to 10,000 addresses) in background batches.
+        </p>
+      </div>
+      <a href="{% url 'bulk_verifier' %}" class="btn btn-secondary btn-sm" style="white-space: nowrap; font-weight: 600;">
+        Open Batch Processing Option →
+      </a>
+    </div>
+  </div>
+
+  <!-- CASE 1: SINGLE EMAIL DETAILED RESULT CARD -->
+  {% if result and results_count <= 1 %}
+    <div id="verification-results-card" class="card" style="border-top: 4px solid {% if result.status == 'deliverable' %}#10b981{% elif result.status == 'undeliverable' %}#ef4444{% elif result.status == 'risky' %}#f59e0b{% else %}#64748b{% endif %}; margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Verification Verdict</span>
+          <div style="font-size: 1.4rem; font-weight: 800; margin-top: 0.25rem;" class="mono">{{ result.email_normalized }}</div>
+        </div>
+        <div>
+          <span class="badge {{ result.status }}" style="font-size: 1.05rem; padding: 0.5rem 1.25rem;">
+            {{ result.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Reason Codes -->
+      <div style="margin-bottom: 1.25rem;">
+        <span class="form-label" style="margin-bottom: 0.5rem;">Reason Codes:</span>
+        <div>
+          {% for r in result.reason_codes %}
+            <span class="chip" style="font-size: 0.82rem; padding: 0.35rem 0.7rem; background: #e2e8f0; color: #1e293b;">{{ r }}</span>
+          {% empty %}
+            <span style="color: var(--text-muted); font-size: 0.88rem;">No negative or risk flags triggered.</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Verdict Explanation Banner -->
+      <div style="background: {% if result.status == 'deliverable' %}#ecfdf5; border-left: 4px solid #10b981; color: #065f46;{% elif result.status == 'undeliverable' %}#fef2f2; border-left: 4px solid #ef4444; color: #991b1b;{% elif result.status == 'risky' %}#fffbeb; border-left: 4px solid #f59e0b; color: #92400e;{% else %}#f8fafc; border-left: 4px solid #94a3b8; color: #334155;{% endif %} padding: 0.9rem 1.25rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.92rem; line-height: 1.5;">
+        {% if result.status == 'deliverable' %}
+          <strong>✓ Mailbox Confirmed Deliverable:</strong> The destination mail server (<code>@{{ result.domain }}</code>) explicitly confirmed that the mailbox <strong>{{ result.local_part }}</strong> exists and can receive incoming emails.
+        {% elif result.status == 'undeliverable' %}
+          <strong>✗ Mailbox Does Not Exist (Undeliverable):</strong> While the domain host (<code>@{{ result.domain }}</code>) has active mail servers, the destination server specifically rejected <strong>{{ result.local_part }}</strong> because this account does not exist in their system.
+        {% elif result.status == 'risky' %}
+          <strong>⚠ Risky Address:</strong> The domain is configured as a Catch-All, disposable, or role-based address, meaning individual delivery cannot be guaranteed.
+        {% else %}
+          <strong>? Inconclusive / Unknown:</strong> The mail server did not provide a definitive acceptance or rejection (e.g. timeout or anti-spam policy block).
+        {% endif %}
+      </div>
+
+      <!-- Evidence Breakdown Table -->
+      <h4 style="font-size: 1rem; margin-bottom: 0.75rem; color: #334155;">Technical Evidence Checklist</h4>
+      <div class="table-container" style="margin-bottom: 1.5rem;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Signal</th>
+              <th>Observed Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Syntax & Format</strong></td>
+              <td>RFC 5322 Well-formedness</td>
+              <td>
+                {% if result.evidence_json.syntax_valid %}
+                  <span style="color: #059669; font-weight: 600;">✓ Valid Email Format</span>
+                {% else %}
+                  <span style="color: #dc2626; font-weight: 600;">✗ Syntax Error</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Domain DNS</strong></td>
+              <td>Domain Resolution (@{{ result.domain }})</td>
+              <td>
+                {% if result.evidence_json.domain_exists %}
+                  <span style="color: #059669; font-weight: 600;">✓ Domain Host Exists (@{{ result.domain }})</span>
+                {% else %}
+                  <span style="color: #dc2626; font-weight: 600;">✗ NXDOMAIN / Unreachable</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Domain Mail Server</strong></td>
+              <td>MX Routing for @{{ result.domain }}</td>
+              <td>
+                {% if result.evidence_json.mx_present %}
+                  <span style="color: #059669; font-weight: 600;">✓ @{{ result.domain }} Mail Server Active</span>
+                {% else %}
+                  <span style="color: #dc2626; font-weight: 600;">✗ No Route / Null MX</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>User Mailbox Check</strong></td>
+              <td>Account Existence ({{ result.local_part }})</td>
+              <td>
+                {% if result.evidence_json.smtp_attempted %}
+                  {% if result.evidence_json.smtp_accepted %}
+                    <span style="color: #059669; font-weight: 700;">✓ Mailbox Exists (Accepted by @{{ result.domain }})</span>
+                  {% elif result.evidence_json.smtp_rejected %}
+                    <span style="color: #dc2626; font-weight: 700;">✗ Mailbox Does Not Exist (Rejected by @{{ result.domain }})</span>
+                  {% else %}
+                    <span style="color: #475569;">Inconclusive (Timeout or Policy Block)</span>
+                  {% endif %}
+                {% else %}
+                  <span style="color: #64748b;">Probing Unavailable / Not Permitted</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Catch-All Test</strong></td>
+              <td>Arbitrary Recipient Test</td>
+              <td>
+                {% if result.evidence_json.catch_all_state == 'no' %}
+                  <span style="color: #059669; font-weight: 600;">✓ Not Catch-All (Mailboxes verified individually)</span>
+                {% elif result.evidence_json.catch_all_state == 'yes' %}
+                  <span style="color: #b45309; font-weight: 600;">⚠ Catch-All Enabled (Accepts all emails)</span>
+                {% else %}
+                  <span class="mono">{{ result.evidence_json.catch_all_state|default:"unknown"|upper }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Provider Risk</strong></td>
+              <td>Disposable / Free Service</td>
+              <td>
+                {% if result.evidence_json.is_disposable %}
+                  <span style="color: #b45309; font-weight: 600;">⚠ Disposable Address Detected</span>
+                {% else %}
+                  <span style="color: #059669;">Clean (Not on disposable blacklist)</span>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+        <span>Evidence Level: <strong>{{ result.evidence_level|default:"mailbox"|upper }}</strong></span>
+        <span>Engine Version: <strong>{{ result.engine_version }}</strong></span>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- CASE 2: SIMULTANEOUS MULTI-EMAIL RESULTS (2 TO 30 EMAILS) -->
+  {% if results_count > 1 %}
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 style="font-size: 1.25rem; font-weight: 700;">Simultaneous Verification Results</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;">
+            Successfully verified <strong>{{ results_count }}</strong> email addresses together in parallel.
+          </p>
+        </div>
+        <div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="exportResultsToCSV()" style="font-weight: 600;">
+            ⬇ Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Summary Stats -->
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+        <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+          Total: <strong>{{ results_count }}</strong>
+        </span>
+        <span class="badge deliverable" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+          Deliverable: <strong id="stat-deliverable">0</strong>
+        </span>
+        <span class="badge undeliverable" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+          Undeliverable: <strong id="stat-undeliverable">0</strong>
+        </span>
+        <span class="badge risky" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+          Risky: <strong id="stat-risky">0</strong>
+        </span>
+        <span class="badge unknown" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+          Unknown: <strong id="stat-unknown">0</strong>
+        </span>
+      </div>
+
+      <!-- Simultaneous Table -->
+      <div class="table-container">
+        <table class="data-table" id="multi-verifier-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Email Address</th>
+              <th>Verdict</th>
+              <th>Reason Codes</th>
+              <th>Mail Server</th>
+              <th>Inspection</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in results %}
+              <tr data-status="{{ r.status }}">
+                <td>{{ forloop.counter }}</td>
+                <td>
+                  <strong class="mono" style="font-size: 0.92rem;">{{ r.email_normalized }}</strong>
+                </td>
+                <td>
+                  <span class="badge {{ r.status }}" style="font-size: 0.82rem; padding: 0.3rem 0.7rem;">
+                    {{ r.status }}
+                  </span>
+                </td>
+                <td>
+                  {% for rc in r.reason_codes %}
+                    <span class="chip" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: #f1f5f9; color: #334155;">{{ rc }}</span>
+                  {% empty %}
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">Clean</span>
+                  {% endfor %}
+                </td>
+                <td style="font-size: 0.85rem;" class="mono">
+                  {{ r.evidence_json.connected_mx|default:r.domain|default:"-" }}
+                </td>
+                <td>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="toggleDetailsRow('detail-row-{{ forloop.counter }}')" style="font-size: 0.78rem; padding: 0.25rem 0.6rem;">
+                    Inspect ▾
+                  </button>
+                </td>
+              </tr>
+              <!-- Expandable Evidence Checklist Row -->
+              <tr id="detail-row-{{ forloop.counter }}" style="display: none; background: #fafafa;">
+                <td colspan="6" style="padding: 1rem 1.25rem;">
+                  <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                      <strong style="font-size: 0.95rem;">Technical Evidence for {{ r.email_normalized }}</strong>
+                      <span class="badge {{ r.status }}">{{ r.status }}</span>
+                    </div>
+
+                    <div class="table-container" style="margin-bottom: 0.5rem;">
+                      <table class="data-table" style="font-size: 0.85rem;">
+                        <thead>
+                          <tr>
+                            <th>Layer</th>
+                            <th>Signal</th>
+                            <th>Observed Result</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><strong>Syntax & Format</strong></td>
+                            <td>RFC 5322 Format</td>
+                            <td>
+                              {% if r.evidence_json.syntax_valid %}
+                                <span style="color: #059669; font-weight: 600;">✓ Valid Format</span>
+                              {% else %}
+                                <span style="color: #dc2626; font-weight: 600;">✗ Syntax Error</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td><strong>Domain DNS</strong></td>
+                            <td>Host Resolution (@{{ r.domain }})</td>
+                            <td>
+                              {% if r.evidence_json.domain_exists %}
+                                <span style="color: #059669; font-weight: 600;">✓ Domain Exists</span>
+                              {% else %}
+                                <span style="color: #dc2626; font-weight: 600;">✗ NXDOMAIN</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td><strong>Mail Server</strong></td>
+                            <td>MX Routing</td>
+                            <td>
+                              {% if r.evidence_json.mx_present %}
+                                <span style="color: #059669; font-weight: 600;">✓ Active Mail Server ({{ r.evidence_json.connected_mx|default:r.domain }})</span>
+                              {% else %}
+                                <span style="color: #dc2626; font-weight: 600;">✗ No Route / Null MX</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td><strong>Mailbox Probe</strong></td>
+                            <td>Account Existence ({{ r.local_part }})</td>
+                            <td>
+                              {% if r.evidence_json.smtp_attempted %}
+                                {% if r.evidence_json.smtp_accepted %}
+                                  <span style="color: #059669; font-weight: 700;">✓ Mailbox Confirmed</span>
+                                {% elif r.evidence_json.smtp_rejected %}
+                                  <span style="color: #dc2626; font-weight: 700;">✗ Mailbox Does Not Exist (Rejected)</span>
+                                {% else %}
+                                  <span style="color: #475569;">Inconclusive (Timeout/Block)</span>
+                                {% endif %}
+                              {% else %}
+                                <span style="color: #64748b;">Probe Unavailable</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td><strong>Catch-All Check</strong></td>
+                            <td>Domain Policy</td>
+                            <td>
+                              {% if r.evidence_json.catch_all_state == 'no' %}
+                                <span style="color: #059669; font-weight: 600;">✓ Not Catch-All</span>
+                              {% elif r.evidence_json.catch_all_state == 'yes' %}
+                                <span style="color: #b45309; font-weight: 600;">⚠ Catch-All Enabled</span>
+                              {% else %}
+                                <span class="mono">{{ r.evidence_json.catch_all_state|default:"unknown"|upper }}</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Standing Disclaimer -->
+  <div class="honest-banner">
+    <strong>Standing Disclaimer:</strong> Verification reflects technical deliverability signals observable at verification time. We never promise 100% mailbox delivery certainty because destination firewalls, catch-all rules, and spam filters can alter final reception.
+  </div>
+</div>
+
+<script>
+  function extractEmails(text) {
+    if (!text) return [];
+    var tokens = text.trim().split(/[\r\n,;\s]+/);
+    var seen = {};
+    var emails = [];
+    for (var i = 0; i < tokens.length; i++) {
+      var clean = tokens[i].replace(/^[<"'(]+|[>"')]+$/g, '').trim();
+      if (clean && clean.indexOf('@') !== -1) {
+        var lower = clean.toLowerCase();
+        if (!seen[lower]) {
+          seen[lower] = true;
+          emails.push(clean);
+        }
+      }
+    }
+    return emails;
+  }
+
+  function handleEmailInputChange(val) {
+    var emails = extractEmails(val);
+    var count = emails.length;
+    var badge = document.getElementById('email-counter-badge');
+    var alertBox = document.getElementById('over-30-alert');
+    var title = document.getElementById('over-30-title');
+    var submitBtn = document.getElementById('submit-verify-btn');
+
+    if (badge) {
+      badge.innerText = count + " / 30 Emails";
+      if (count > 30) {
+        badge.style.background = "#fee2e2";
+        badge.style.color = "#dc2626";
+      } else if (count > 0) {
+        badge.style.background = "#dbeafe";
+        badge.style.color = "#1d4ed8";
+      } else {
+        badge.style.background = "#f1f5f9";
+        badge.style.color = "#475569";
+      }
+    }
+
+    if (count > 30) {
+      if (alertBox) alertBox.style.display = "block";
+      if (title) title.innerText = "⚠️ " + count + " emails detected (> 30 emails)";
+      if (submitBtn) {
+        submitBtn.innerText = "Switch to Batch Processing →";
+        submitBtn.className = "btn btn-secondary";
+      }
+    } else {
+      if (alertBox) alertBox.style.display = "none";
+      if (submitBtn) {
+        submitBtn.innerText = "Run Technical Verification";
+        submitBtn.className = "btn btn-primary";
+      }
+    }
+  }
+
+  // Intercept submit if > 30 emails to automatically activate Batch Processing option
+  document.getElementById('verifier-form')?.addEventListener('submit', function(e) {
+    var inputVal = document.getElementById('id_email_input').value;
+    var emails = extractEmails(inputVal);
+    if (emails.length > 30) {
+      e.preventDefault();
+      window.location.href = "{% url 'bulk_verifier' %}";
+    }
+  });
+
+  function toggleDetailsRow(rowId) {
+    var row = document.getElementById(rowId);
+    if (row) {
+      row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+  }
+
+  // Calculate status statistics on multi-table load
+  (function initSummaryStats() {
+    var rows = document.querySelectorAll('#multi-verifier-table tbody tr[data-status]');
+    var stats = { deliverable: 0, undeliverable: 0, risky: 0, unknown: 0 };
+    rows.forEach(function(row) {
+      var st = row.getAttribute('data-status');
+      if (stats.hasOwnProperty(st)) {
+        stats[st]++;
+      }
+    });
+    if (document.getElementById('stat-deliverable')) document.getElementById('stat-deliverable').innerText = stats.deliverable;
+    if (document.getElementById('stat-undeliverable')) document.getElementById('stat-undeliverable').innerText = stats.undeliverable;
+    if (document.getElementById('stat-risky')) document.getElementById('stat-risky').innerText = stats.risky;
+    if (document.getElementById('stat-unknown')) document.getElementById('stat-unknown').innerText = stats.unknown;
+
+    // Trigger initial counter check
+    var initialInput = document.getElementById('id_email_input');
+    if (initialInput && initialInput.value) {
+      handleEmailInputChange(initialInput.value);
+    }
+  })();
+
+  function exportResultsToCSV() {
+    var rows = [["Email", "Status", "Reason Codes", "Mail Server"]];
+    {% for r in results %}
+      rows.push([
+        "{{ r.email_normalized|escapejs }}",
+        "{{ r.status|escapejs }}",
+        "{{ r.reason_codes|join:'; '|escapejs }}",
+        "{{ r.evidence_json.connected_mx|default:r.domain|escapejs }}"
+      ]);
+    {% endfor %}
+
+    var csvContent = "data:text/csv;charset=utf-8," + rows.map(function(e) {
+      return e.map(function(cell) {
+        return '"' + String(cell).replace(/"/g, '""') + '"';
+      }).join(",");
+    }).join("\n");
+
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "verification_results_" + new Date().toISOString().slice(0, 10) + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+{% endblock %}

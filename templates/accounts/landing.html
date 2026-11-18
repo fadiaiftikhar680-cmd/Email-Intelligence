@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Intelligence Platform | Find. Verify. Enrich.{% endblock %}
+
+{% block public_content %}
+<div style="text-align: center; padding: 4rem 1rem 3rem;">
+  <span style="background: #eff6ff; color: #2563eb; font-weight: 700; font-size: 0.85rem; padding: 0.35rem 1rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
+    Find. Verify. Enrich.
+  </span>
+  <h1 style="font-size: 3.25rem; font-weight: 800; line-height: 1.15; margin: 1.5rem 0 1rem; color: #0f172a;">
+    Trustworthy Email Discovery &<br><span style="color: #2563eb;">Evidence-Based Verification</span>
+  </h1>
+  <p style="font-size: 1.25rem; color: #64748b; max-width: 720px; margin: 0 auto 2.5rem; line-height: 1.6;">
+    Discover publicly listed business emails, verify deliverability signals deterministically, and analyze company intelligence. No guesswork, no exaggerated claims.
+  </p>
+  <div style="display: flex; justify-content: center; gap: 1rem;">
+    <a href="{% url 'register' %}" class="btn btn-primary" style="padding: 0.9rem 2rem; font-size: 1.05rem;">Start Free Discovery</a>
+    <a href="{% url 'api_docs' %}" class="btn btn-secondary" style="padding: 0.9rem 2rem; font-size: 1.05rem;">API Reference</a>
+  </div>
+</div>
+
+<!-- Three Engine Pillars (Part 1.2) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin: 3rem 0;">
+  <div class="card" style="padding: 2.25rem;">
+    <div style="font-size: 2.25rem; margin-bottom: 1rem;">🔍</div>
+    <h3 style="font-size: 1.35rem; margin-bottom: 0.75rem;">Email Finder Engine</h3>
+    <p style="color: #64748b; line-height: 1.6; margin-bottom: 1.25rem;">
+      Crawls public website pages within safe bounds to find published business emails. Tracks exact source pages and methods. Generates inferred patterns only when supported by verifiable public evidence.
+    </p>
+    <span class="chip">Public-Only Discovery</span>
+    <span class="chip">SSRF Guarded</span>
+    <span class="chip">Robots Compliant</span>
+  </div>
+
+  <div class="card" style="padding: 2.25rem;">
+    <div style="font-size: 2.25rem; margin-bottom: 1rem;">✅</div>
+    <h3 style="font-size: 1.35rem; margin-bottom: 0.75rem;">Email Verification Engine</h3>
+    <p style="color: #64748b; line-height: 1.6; margin-bottom: 1.25rem;">
+      Gathers technical evidence across 13 deterministic decision rules: syntax, DNS resolution, MX records, disposable detection, role-based classification, and SMTP probing without sending message data.
+    </p>
+    <span class="chip">13 Decision Rules</span>
+    <span class="chip">Catch-All Detection</span>
+    <span class="chip">Disposable Checks</span>
+  </div>
+
+  <div class="card" style="padding: 2.25rem;">
+    <div style="font-size: 2.25rem; margin-bottom: 1rem;">🏢</div>
+    <h3 style="font-size: 1.35rem; margin-bottom: 0.75rem;">Company & People Intelligence</h3>
+    <p style="color: #64748b; line-height: 1.6; margin-bottom: 1.25rem;">
+      Collects publicly evidenced company facts, phones, addresses, and team profiles. Every attribute links directly back to its source URL. If a fact cannot be established, it is left empty or unknown.
+    </p>
+    <span class="chip">Source Tracking</span>
+    <span class="chip">No Guesses</span>
+    <span class="chip">Audited Access</span>
+  </div>
+</div>
+
+<!-- Honest Accuracy & Transparency Note (Part 1.3 & Part 10.1) -->
+<div class="card" style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 2rem;">
+  <h4 style="font-size: 1.1rem; color: #1e293b; margin-bottom: 0.5rem;">Honest Accuracy Policy</h4>
+  <p style="color: #475569; line-height: 1.6;">
+    Unlike traditional platforms that claim 100% verification guarantees, we believe in honest technical reality. Many mail servers hide mailbox existence behind greylisting, catch-all domains, or firewalls. Results reflect verifiable technical evidence and are never labeled as deliverable without affirmative evidence.
+  </p>
+</div>
+{% endblock %}
+

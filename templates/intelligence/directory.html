@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Public Intelligence Directory{% endblock %}
+
+{% block content %}
+<div style="max-width: 1080px;">
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem;">Verified Public Knowledge Graph</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Company and People intelligence records with complete per-attribute source evidence links.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 1.75rem;">
+    <!-- Companies -->
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 1.15rem;">Companies ({{ companies.count }})</h4>
+      </div>
+      {% if companies %}
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Domain</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for comp in companies %}
+                <tr>
+                  <td><strong>{{ comp.name }}</strong></td>
+                  <td class="mono">{{ comp.domain }}</td>
+                  <td>
+                    <a href="{% url 'company_intelligence' comp.id %}" class="btn btn-secondary btn-sm">Profile</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No companies discovered yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- People -->
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 1.15rem;">Professional Contacts ({{ people.count }})</h4>
+      </div>
+      {% if people %}
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in people %}
+                <tr>
+                  <td><strong>{{ p.full_name }}</strong></td>
+                  <td style="color: #475569;">{{ p.job_title|default:"Professional" }}</td>
+                  <td>
+                    <a href="{% url 'person_intelligence' p.id %}" class="btn btn-secondary btn-sm">Profile</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No people discovered yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Company Intelligence: {{ company.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{% url 'intelligence_directory' %}" style="font-size: 0.9rem; font-weight: 600;">← Back to Intelligence Directory</a>
+  </div>
+
+  <!-- Company Overview Card -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+      <div>
+        <h2 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ company.name }}</h2>
+        <span class="mono" style="color: #2563eb; font-size: 1rem;">{{ company.domain }}</span>
+      </div>
+      <div>
+        {% if company.website %}
+          <a href="{{ company.website }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Visit Website ↗</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <p style="color: #475569; line-height: 1.6; margin-bottom: 1.5rem;">
+      {{ company.description|default:"No public meta description disclosed on website." }}
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+      <div>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Public Phone</span>
+        <div style="font-weight: 600; margin-top: 0.2rem;">{{ company.phone|default:"None listed" }}</div>
+      </div>
+      <div>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Source URL</span>
+        <div style="margin-top: 0.2rem;">
+          {% if company.source_url %}
+            <a href="{{ company.source_url }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem;">View Public Page ↗</a>
+          {% else %}
+            <span style="color: var(--text-muted);">Direct crawl</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discovered Company Contacts Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Discovered Company Contacts</h3>
+    </div>
+
+    {% if emails %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Category</th>
+              <th>Origin</th>
+              <th>Method</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for em in emails %}
+              <tr>
+                <td class="mono"><strong>{{ em.email_normalized }}</strong></td>
+                <td><span class="chip">{{ em.category }}</span></td>
+                <td><span class="badge {{ em.origin }}">{{ em.origin }}</span></td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ em.method }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No contact emails mapped to this company.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Finder Run Results ({{ job.kind|title }}){% endblock %}
+
+{% block content %}
+<div style="max-width: 1120px;">
+  <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <a href="{% url 'finder_history' %}" style="font-size: 0.9rem; font-weight: 600;">← Back to Finder History</a>
+    </div>
+    <div>
+      <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 0.9rem;">Status: {{ job.status }}</span>
+    </div>
+  </div>
+
+  <!-- Job Header Card -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Target Input</span>
+        <h3 style="font-size: 1.35rem; margin-top: 0.2rem;">
+          {{ job.display_target }}
+        </h3>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Emails Found</span>
+        <div style="font-size: 1.8rem; font-weight: 800; color: #2563eb;">{{ job.result_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discovered Emails Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.15rem;">Extracted & Inferred Business Addresses</h3>
+    </div>
+
+    {% if discovered_emails %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Email Address</th>
+              <th>Origin</th>
+              <th>Method</th>
+              <th>Category</th>
+              <th>Source Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for em in discovered_emails %}
+              <tr>
+                <td class="mono"><strong>{{ em.email_normalized }}</strong></td>
+                <td>
+                  <span class="badge {{ em.origin }}">{{ em.origin }}</span>
+                </td>
+                <td style="font-size: 0.85rem; font-family: var(--font-mono); color: #475569;">{{ em.method }}</td>
+                <td><span class="chip">{{ em.category }}</span></td>
+                <td style="font-size: 0.85rem;">
+                  {% if em.source_page %}
+                    <a href="{{ em.source_page.url }}" target="_blank" rel="noopener noreferrer" style="color: #2563eb;">
+                      Source Page ↗
+                    </a>
+                  {% else %}
+                    <span style="color: var(--text-muted);">Pattern Inferred</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+        {% if job.error_code == 'ACCESS_RESTRICTED' %}
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔒</div>
+          <h4 style="color: #92400e;">Access Restricted</h4>
+          <p style="max-width: 500px; margin: 0.5rem auto;">
+            This profile or website restricts automated crawling under its terms. No unauthorized bypass was attempted per platform ethics.
+          </p>
+        {% else %}
+          <p>No publicly listed email addresses found on the permitted pages.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pages Crawled Section -->
+  {% if visited_pages %}
+    <div class="card">
+      <div class="card-header">
+        <h3 style="font-size: 1.15rem;">Crawl Trail & Robots Audit</h3>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Visited URL</th>
+              <th>HTTP Code</th>
+              <th>Robots.txt</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in visited_pages %}
+              <tr>
+                <td class="mono" style="font-size: 0.85rem;">{{ p.url|truncatechars:65 }}</td>
+                <td><strong>{{ p.http_status }}</strong></td>
+                <td>
+                  {% if p.robots_allowed %}
+                    <span style="color: #059669; font-weight: 600;">Allowed</span>
+                  {% else %}
+                    <span style="color: #dc2626; font-weight: 600;">Disallowed</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ p.fetched_at|date:"H:i:s" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

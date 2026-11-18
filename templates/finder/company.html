@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Company Email Finder{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <!-- Header Card -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header" style="margin-bottom: 1rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; font-weight: 700;">Discover Public Business Emails</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+          Crawls public company pages (contact, about, team, careers) safely within robots.txt and SSRF policies.
+        </p>
+      </div>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+      <button type="button" id="tab-btn-direct" class="btn btn-primary btn-sm" onclick="switchFinderTab('direct')" style="font-weight: 600;">
+        🔗 Direct URLs (1 to 20 Companies)
+      </button>
+      <button type="button" id="tab-btn-file" class="btn btn-secondary btn-sm" onclick="switchFinderTab('file')" style="font-weight: 600;">
+        📁 Bulk File Upload (20+ Companies)
+      </button>
+    </div>
+
+    <!-- TAB 1: Direct URLs Input (1 to 20) -->
+    <div id="tab-content-direct">
+      <form method="post" action="{% url 'company_finder' %}" id="direct-urls-form">
+        {% csrf_token %}
+        <input type="hidden" name="source" value="direct">
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label class="form-label" for="urls-input" style="margin-bottom: 0;">
+              Company Website URLs (1 to 20)
+            </label>
+            <span id="url-counter-badge" class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.82rem; font-weight: 600;">
+              0 / 20 URLs detected
+            </span>
+          </div>
+
+          <textarea 
+            id="urls-input" 
+            name="urls" 
+            rows="6" 
+            class="form-input mono" 
+            style="width: 100%; font-size: 0.92rem; line-height: 1.5; resize: vertical;" 
+            placeholder="Enter or paste company URLs (one per line, up to 20 URLs):&#10;https://stripe.com&#10;https://shopify.com&#10;airbnb.com&#10;github.com"
+            autofocus
+            oninput="handleUrlInputChange(this.value)"
+          ></textarea>
+        </div>
+
+        <!-- Over-20 Warning Banner (Auto-shown by JS when > 20 URLs are pasted) -->
+        <div id="over-20-alert" style="display: none; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.85rem 1.25rem; margin-bottom: 1rem; color: #92400e;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <strong id="over-20-title">⚠️ More than 20 URLs detected!</strong>
+              <div style="font-size: 0.88rem; margin-top: 0.2rem;">
+                Direct input processes up to <strong>20 URLs</strong> at a time. For larger lists of 20+ URLs, please use the Bulk File Upload tab, or we will process the first 20 URLs.
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="switchFinderTab('file')" style="white-space: nowrap; font-size: 0.82rem;">
+              Switch to File Upload →
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="verify-direct" name="verify" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <label for="verify-direct" style="font-size: 0.9rem; color: #334155; font-weight: 500; cursor: pointer;">
+              Automatically run technical deliverability check on discovered emails
+            </label>
+          </div>
+
+          <button type="submit" id="submit-direct-btn" class="btn btn-primary" style="white-space: nowrap; font-weight: 600;">
+            Find Emails
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- TAB 2: Bulk File Upload (> 20 URLs) -->
+    <div id="tab-content-file" style="display: none;">
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; color: #1e293b;">
+          Bulk Company URL List Processing
+        </h4>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          Upload a spreadsheet or text list with 20 or more company websites (up to 10,000 URLs). We will crawl each company domain and extract all verified business contacts.
+        </p>
+        <div style="font-size: 0.82rem; color: #64748b;">
+          <strong>Supported Formats:</strong> <code>.csv</code>, <code>.xlsx</code> (column with header <em>website</em>, <em>url</em>, or <em>domain</em>), or plain text <code>.txt</code> (one URL per line). Max 5 MB.
+        </div>
+      </div>
+
+      <form method="post" action="{% url 'company_finder' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="source" value="file">
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="bulk-file-input">Select Company URLs File (.csv, .xlsx, .txt)</label>
+          <input 
+            type="file" 
+            id="bulk-file-input" 
+            name="file" 
+            class="form-input" 
+            accept=".csv,.xlsx,.txt" 
+            required
+            style="padding: 0.75rem;"
+          >
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="verify-file" name="verify" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <label for="verify-file" style="font-size: 0.9rem; color: #334155; font-weight: 500; cursor: pointer;">
+              Automatically run technical deliverability check on discovered emails
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="white-space: nowrap; font-weight: 600;">
+            Upload & Process Company URLs
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Recent Company Discovery Runs -->
+  <div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 1.15rem; font-weight: 700;">Recent Company Discovery Runs</h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">Latest searches & batches</span>
+    </div>
+
+    {% if recent_jobs %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target URL / Batch</th>
+              <th>Status</th>
+              <th>Emails Found</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in recent_jobs %}
+              <tr>
+                <td>
+                  <span class="mono" style="font-weight: 600;">{{ job.display_target }}</span>
+                  {% if job.batch_name %}
+                    <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.72rem; margin-left: 0.4rem;">
+                      {{ job.batch_name|truncatechars:20 }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge" style="background: {% if job.status == 'completed' %}#ecfdf5; color: #065f46;{% elif job.status == 'failed' %}#fef2f2; color: #991b1b;{% else %}#f1f5f9; color: #334155;{% endif %}">
+                    {{ job.status }}
+                  </span>
+                </td>
+                <td><span style="color: #2563eb; font-weight: 700;">{{ job.result_count }}</span></td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ job.created_at|date:"M d, H:i" }}</td>
+                <td>
+                  {% if job.batch_id %}
+                    <a href="{% url 'finder_batch_detail' job.batch_id %}" class="btn btn-secondary btn-sm">View Batch</a>
+                  {% else %}
+                    <a href="{% url 'finder_job_detail' job.id %}" class="btn btn-secondary btn-sm">View Results</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); text-align: center; padding: 2rem;">No company finder runs yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function switchFinderTab(tab) {
+  var directBtn = document.getElementById('tab-btn-direct');
+  var fileBtn = document.getElementById('tab-btn-file');
+  var directContent = document.getElementById('tab-content-direct');
+  var fileContent = document.getElementById('tab-content-file');
+
+  if (tab === 'file') {
+    directBtn.className = 'btn btn-secondary btn-sm';
+    fileBtn.className = 'btn btn-primary btn-sm';
+    directContent.style.display = 'none';
+    fileContent.style.display = 'block';
+  } else {
+    directBtn.className = 'btn btn-primary btn-sm';
+    fileBtn.className = 'btn btn-secondary btn-sm';
+    directContent.style.display = 'block';
+    fileContent.style.display = 'none';
+  }
+}
+
+function handleUrlInputChange(text) {
+  if (!text) {
+    updateBadgeAndButton(0);
+    return;
+  }
+  // Split by newlines, commas, semicolons
+  var lines = text.split(/[\r\n,;]+/);
+  var validCount = 0;
+  var seen = {};
+
+  for (var i = 0; i < lines.length; i++) {
+    var item = lines[i].trim();
+    if (item.length > 2 && item.indexOf('.') !== -1 && !seen[item.toLowerCase()]) {
+      seen[item.toLowerCase()] = true;
+      validCount++;
+    }
+  }
+
+  updateBadgeAndButton(validCount);
+}
+
+function updateBadgeAndButton(count) {
+  var badge = document.getElementById('url-counter-badge');
+  var submitBtn = document.getElementById('submit-direct-btn');
+  var alertBox = document.getElementById('over-20-alert');
+  var alertTitle = document.getElementById('over-20-title');
+
+  if (count === 0) {
+    badge.innerText = '0 / 20 URLs detected';
+    badge.style.background = '#f1f5f9';
+    badge.style.color = '#475569';
+    submitBtn.innerText = 'Find Emails';
+    alertBox.style.display = 'none';
+  } else if (count <= 20) {
+    badge.innerText = '✓ ' + count + ' / 20 URLs detected';
+    badge.style.background = '#ecfdf5';
+    badge.style.color = '#065f46';
+    submitBtn.innerText = count === 1 ? 'Find Emails' : 'Find Emails (' + count + ' Companies)';
+    alertBox.style.display = 'none';
+  } else {
+    // Count > 20
+    badge.innerText = '⚠️ ' + count + ' URLs (Max 20)';
+    badge.style.background = '#fffbeb';
+    badge.style.color = '#92400e';
+    submitBtn.innerText = 'Process First 20 Companies';
+    alertTitle.innerText = '⚠️ ' + count + ' URLs detected (Direct input limit is 20)';
+    alertBox.style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

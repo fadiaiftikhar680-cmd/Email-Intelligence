@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Administrative Operations Portal{% endblock %}
+
+{% block content %}
+<div style="max-width: 1160px;">
+  <!-- Operational Metrics -->
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-title">Registered Accounts</div>
+      <div class="metric-value">{{ total_users }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Active Background Tasks</div>
+      <div class="metric-value" style="color: #2563eb;">{{ active_jobs }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Suppressed Entities</div>
+      <div class="metric-value" style="color: #92400e;">{{ suppressions.count }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Audit Trail Entries</div>
+      <div class="metric-value">{{ recent_audits.count }}</div>
+    </div>
+  </div>
+
+  <!-- User Management & Audited Break-Glass View -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 1.25rem;">User Management</h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">
+          Access to private user records requires mandatory break-glass justification logged to AuditLog per Part 8.8.
+        </p>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th>Last Login</th>
+            <th>Break-Glass Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td class="mono"><strong>{{ u.email }}</strong></td>
+              <td><span class="chip">{{ u.role }}</span></td>
+              <td>
+                {% if u.is_active %}
+                  <span class="badge deliverable">Active</span>
+                {% else %}
+                  <span class="badge undeliverable">Disabled</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">{{ u.created_at|date:"Y-m-d" }}</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">{{ u.last_login_at|date:"Y-m-d H:i"|default:"Never" }}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openBreakGlassModal('{{ u.id }}', '{{ u.email }}')">
+                  🔍 Audited Inspect
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Suppression List Management -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 1.25rem;">Suppression / Opt-Out List</h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Suppressed addresses or domains are excluded from all discovery and verification results.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'admin_dashboard' %}" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_suppression">
+      <input type="text" name="target" class="form-input" required placeholder="target@domain.com or domain.com" style="flex: 2;">
+      <input type="text" name="reason" class="form-input" placeholder="Justification / Request reference" style="flex: 2;">
+      <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Add Suppression</button>
+    </form>
+
+    {% if suppressions %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Suppressed Target</th>
+              <th>Reason</th>
+              <th>Added</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in suppressions %}
+              <tr>
+                <td class="mono"><strong>{{ s.email_or_domain }}</strong></td>
+                <td>{{ s.reason|default:"No reason specified" }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted);">{{ s.created_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                  <form method="post" action="{% url 'admin_dashboard' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_suppression">
+                    <input type="hidden" name="entry_id" value="{{ s.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="color: #ef4444;">Remove</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Append-Only Audit Trail -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size: 1.25rem;">Platform Audit Trail</h3>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Actor</th>
+            <th>Target Type</th>
+            <th>Target ID</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in recent_audits %}
+            <tr>
+              <td><span class="chip" style="font-weight: 700;">{{ a.action }}</span></td>
+              <td>{{ a.actor.email|default:"System / Anonymous" }}</td>
+              <td>{{ a.target_type }}</td>
+              <td class="mono" style="font-size: 0.8rem;">{{ a.target_id|truncatechars:20 }}</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">{{ a.occurred_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Break Glass Access -->
+<div id="breakGlassModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 9999;">
+  <div class="card" style="max-width: 500px; width: 100%; margin: 2rem; background: #fff;">
+    <h3 style="font-size: 1.25rem; color: #991b1b; margin-bottom: 0.5rem;">⚠️ Break-Glass Inspection Request</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+      You are requesting to view private records for <strong id="bgUserEmail"></strong>. This action is permanently recorded in the security AuditLog.
+    </p>
+
+    <form id="bgForm" method="post" action="">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="bgReason">Mandatory Operational Justification Reason:</label>
+        <textarea id="bgReason" name="reason" class="form-input" rows="3" required placeholder="e.g. Investigation of reported abuse ticket #1234"></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeBreakGlassModal()">Cancel</button>
+        <button type="submit" class="btn btn-danger">Confirm & View Records</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openBreakGlassModal(userId, email) {
+  document.getElementById('bgUserEmail').innerText = email;
+  document.getElementById('bgForm').action = '/admin-portal/break-glass/' + userId + '/';
+  document.getElementById('breakGlassModal').style.display = 'flex';
+}
+function closeBreakGlassModal() {
+  document.getElementById('breakGlassModal').style.display = 'none';
+}
+</script>
+{% endblock %}
+
